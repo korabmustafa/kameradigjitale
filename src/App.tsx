@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
+import { seedOrders, seedUsers, type AdminUser, type Order, type OrderStatus } from './data/admin'
+import { menuItems, seedCategoryNavigation, type CategoryNavigationMap, type NavSubcategory } from './data/navigation'
+import { seedProducts, type Product } from './data/products'
+import { CartDrawer } from './features/cart/components/CartDrawer'
 import { Footer } from './features/layout/components/Footer'
 import { NavBar } from './features/navigation/components/NavBar'
 import { ProductDetailPage } from './features/products/pages/ProductDetailPage'
-import { seedOrders, seedUsers, type AdminUser, type Order, type OrderStatus } from './data/admin'
-import { menuItems } from './data/navigation'
-import { seedProducts, type Product } from './data/products'
 import { AdminPage } from './pages/AdminPage'
 import { CheckoutPage } from './pages/CheckoutPage'
 import { CollectionPage } from './pages/CollectionPage'
@@ -41,16 +42,68 @@ const staticContent = {
   }
 } as const
 
+const dedupeCategoryNavigation = (input: CategoryNavigationMap) => {
+  const result: CategoryNavigationMap = {}
+
+  for (const [category, entries] of Object.entries(input)) {
+    const seen = new Set<string>()
+    const cleanEntries = (entries ?? []).filter((entry) => {
+      const normalized = entry.title.trim().toLowerCase()
+      if (!normalized || seen.has(normalized)) {
+        return false
+      }
+      seen.add(normalized)
+      return true
+    })
+
+    if (cleanEntries.length > 0) {
+      result[category as Product['category']] = cleanEntries
+    }
+  }
+
+  return result
+}
+
+const mergeProductSubcategories = (products: Product[], source: CategoryNavigationMap) => {
+  const merged: CategoryNavigationMap = dedupeCategoryNavigation(source)
+
+  products.forEach((product) => {
+    const title = product.subcategory?.trim()
+    if (!title) {
+      return
+    }
+
+    const items = merged[product.category] ?? []
+    const exists = items.some((item) => item.title.toLowerCase() === title.toLowerCase())
+
+    if (!exists) {
+      const id = `${product.category.toLowerCase().replace(/\s+/g, '-')}-${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
+      const nextEntry: NavSubcategory = { id, title, image: product.image }
+      merged[product.category] = [...items, nextEntry]
+    }
+  })
+
+  return merged
+}
+
 export function App() {
   const [products, setProducts] = useState<Product[]>(seedProducts)
   const [users, setUsers] = useState<AdminUser[]>(seedUsers)
   const [orders, setOrders] = useState<Order[]>(seedOrders)
   const [cart, setCart] = useState<Record<string, number>>({})
+  const [cartDrawerOpen, setCartDrawerOpen] = useState(false)
+  const [categoryNavigation, setCategoryNavigation] = useState<CategoryNavigationMap>(seedCategoryNavigation)
 
   const cartCount = useMemo(() => Object.values(cart).reduce((sum, qty) => sum + qty, 0), [cart])
 
+  const resolvedNavigation = useMemo(
+    () => mergeProductSubcategories(products, categoryNavigation),
+    [products, categoryNavigation]
+  )
+
   const handleAddToCart = (id: string) => {
     setCart((state) => ({ ...state, [id]: (state[id] ?? 0) + 1 }))
+    setCartDrawerOpen(true)
   }
 
   const handleCreateProduct = (product: Product) => {
@@ -89,9 +142,13 @@ export function App() {
     setOrders((state) => state.map((order) => (order.id === id ? { ...order, status } : order)))
   }
 
+  const handleUpdateCategoryNavigation = (nextNavigation: CategoryNavigationMap) => {
+    setCategoryNavigation(dedupeCategoryNavigation(nextNavigation))
+  }
+
   return (
     <div className="flex min-h-screen flex-col">
-      <NavBar cartCount={cartCount} />
+      <NavBar cartCount={cartCount} categoryNavigation={resolvedNavigation} />
       <div className="flex-1">
         <Routes>
           <Route path="/" element={<HomePage products={products} onAddToCart={handleAddToCart} />} />
@@ -131,12 +188,14 @@ export function App() {
                 products={products}
                 users={users}
                 orders={orders}
+                categoryNavigation={resolvedNavigation}
                 onCreateProduct={handleCreateProduct}
                 onDeleteProduct={handleDeleteProduct}
                 onCreateUser={handleCreateUser}
                 onToggleUserActive={handleToggleUserActive}
                 onDeleteUser={handleDeleteUser}
                 onUpdateOrderStatus={handleUpdateOrderStatus}
+                onUpdateCategoryNavigation={handleUpdateCategoryNavigation}
               />
             }
           />
@@ -152,6 +211,7 @@ export function App() {
         </Routes>
       </div>
       <Footer />
+      <CartDrawer open={cartDrawerOpen} cart={cart} products={products} onClose={() => setCartDrawerOpen(false)} />
     </div>
   )
 }

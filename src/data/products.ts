@@ -16,6 +16,7 @@ export type Product = {
   image: string
   gallery?: string[]
   description: string
+  subcategory?: string
   specs?: Array<{ label: string; value: string }>
   featured?: boolean
 }
@@ -36,6 +37,7 @@ export const seedProducts: Product[] = [
       'https://images.unsplash.com/photo-1452780212940-6f5c0d14d848?auto=format&fit=crop&w=900&q=80'
     ],
     description: 'Full-frame mirrorless camera with excellent low-light capability.',
+    subcategory: 'Mirrorless',
     specs: [
       { label: 'Brand', value: 'Nikon' },
       { label: 'Sensor', value: '24.5MP Full Frame CMOS' },
@@ -58,6 +60,7 @@ export const seedProducts: Product[] = [
       'https://images.unsplash.com/photo-1516724562728-afc824a36e84?auto=format&fit=crop&w=900&q=80'
     ],
     description: 'Classic 35mm film icon for timeless analog storytelling.',
+    subcategory: 'SLR',
     specs: [
       { label: 'Brand', value: 'Canon' },
       { label: 'Format', value: '35mm film' },
@@ -74,7 +77,8 @@ export const seedProducts: Product[] = [
     stock: 3,
     image:
       'https://images.unsplash.com/photo-1529078155058-5d716f45d604?auto=format&fit=crop&w=900&q=80',
-    description: 'Ultra-sharp pro zoom lens for portraits, travel, and street.'
+    description: 'Ultra-sharp pro zoom lens for portraits, travel, and street.',
+    subcategory: 'Zoom Lenses'
   },
   {
     id: 'acc-001',
@@ -85,7 +89,8 @@ export const seedProducts: Product[] = [
     stock: 11,
     image:
       'https://images.unsplash.com/photo-1510127034890-ba27508e9f1c?auto=format&fit=crop&w=900&q=80',
-    description: 'Compact and playful camera bag built for quick adventures.'
+    description: 'Compact and playful camera bag built for quick adventures.',
+    subcategory: 'Bags & Cases'
   },
   {
     id: 'film-001',
@@ -96,7 +101,8 @@ export const seedProducts: Product[] = [
     stock: 22,
     image:
       'https://images.unsplash.com/photo-1495707902641-75cac588d2e9?auto=format&fit=crop&w=900&q=80',
-    description: 'Vibrant color negative film with beautiful skin tones.'
+    description: 'Vibrant color negative film with beautiful skin tones.',
+    subcategory: 'Color Negative'
   },
   {
     id: 'sup-001',
@@ -107,6 +113,7 @@ export const seedProducts: Product[] = [
     stock: 15,
     image:
       'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?auto=format&fit=crop&w=900&q=80',
-    description: 'Keep your gear spotless and shooting-ready.'
+    description: 'Keep your gear spotless and shooting-ready.',
+    subcategory: 'Cleaning'
   }
 ]
