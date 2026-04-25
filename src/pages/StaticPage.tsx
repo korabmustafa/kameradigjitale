@@ -1,7 +1,7 @@
 type StaticPageProps = {
   title: string
   description: string
-  bullets: string[]
+  bullets: readonly string[]
 }
 
 export function StaticPage({ title, description, bullets }: StaticPageProps) {

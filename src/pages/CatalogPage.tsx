@@ -1,5 +1,5 @@
 import type { Product } from '../data/products'
-import { ProductCard } from '../components/ProductCard'
+import { ProductCard } from '../features/products/components/ProductCard'
 
 type CatalogPageProps = {
   products: Product[]
