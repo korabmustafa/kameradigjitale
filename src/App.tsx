@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
-import { NavBar } from './components/NavBar'
+import { Footer } from './features/layout/components/Footer'
+import { NavBar } from './features/navigation/components/NavBar'
+import { ProductDetailPage } from './features/products/pages/ProductDetailPage'
 import { seedOrders, seedUsers, type AdminUser, type Order, type OrderStatus } from './data/admin'
 import { menuItems } from './data/navigation'
 import { seedProducts, type Product } from './data/products'
@@ -53,7 +55,7 @@ export function App() {
 
   const handleCreateProduct = (product: Product) => {
     setProducts((state) => {
-      const exists = state.some((item) => item.id === product.id)
+      const exists = state.some((item) => item.id === product.id || item.productCode === product.productCode)
       if (exists) {
         return state
       }
@@ -88,64 +90,68 @@ export function App() {
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="flex min-h-screen flex-col">
       <NavBar cartCount={cartCount} />
-      <Routes>
-        <Route path="/" element={<HomePage products={products} onAddToCart={handleAddToCart} />} />
-        <Route
-          path="/catalog"
-          element={
-            <CollectionPage
-              title="Browse Cameras & Accessories"
-              subtitle="Everything in one place while backend APIs are being prepared."
-              products={products}
-              onAddToCart={handleAddToCart}
-            />
-          }
-        />
-        {menuItems
-          .filter((item) => item.category)
-          .map((item) => (
+      <div className="flex-1">
+        <Routes>
+          <Route path="/" element={<HomePage products={products} onAddToCart={handleAddToCart} />} />
+          <Route
+            path="/catalog"
+            element={
+              <CollectionPage
+                title="Browse Cameras & Accessories"
+                subtitle="Everything in one place while backend APIs are being prepared."
+                products={products}
+                onAddToCart={handleAddToCart}
+              />
+            }
+          />
+          {menuItems
+            .filter((item) => item.category)
+            .map((item) => (
+              <Route
+                key={item.path}
+                path={item.path}
+                element={
+                  <CollectionPage
+                    title={item.label}
+                    subtitle={`Discover ${item.label.toLowerCase()} selected for local creators.`}
+                    products={products.filter((product) => product.category === item.category)}
+                    onAddToCart={handleAddToCart}
+                  />
+                }
+              />
+            ))}
+          <Route path="/products/:productCode" element={<ProductDetailPage products={products} onAddToCart={handleAddToCart} />} />
+          <Route path="/checkout" element={<CheckoutPage cart={cart} products={products} />} />
+          <Route
+            path="/admin"
+            element={
+              <AdminPage
+                products={products}
+                users={users}
+                orders={orders}
+                onCreateProduct={handleCreateProduct}
+                onDeleteProduct={handleDeleteProduct}
+                onCreateUser={handleCreateUser}
+                onToggleUserActive={handleToggleUserActive}
+                onDeleteUser={handleDeleteUser}
+                onUpdateOrderStatus={handleUpdateOrderStatus}
+              />
+            }
+          />
+          <Route path="/info" element={<InfoPage />} />
+          {Object.entries(staticContent).map(([path, config]) => (
             <Route
-              key={item.path}
-              path={item.path}
-              element={
-                <CollectionPage
-                  title={item.label}
-                  subtitle={`Discover ${item.label.toLowerCase()} selected for local creators.`}
-                  products={products.filter((product) => product.category === item.category)}
-                  onAddToCart={handleAddToCart}
-                />
-              }
+              key={path}
+              path={path}
+              element={<StaticPage title={config.title} description={config.description} bullets={config.bullets} />}
             />
           ))}
-        <Route path="/checkout" element={<CheckoutPage cart={cart} products={products} />} />
-        <Route
-          path="/admin"
-          element={
-            <AdminPage
-              products={products}
-              users={users}
-              orders={orders}
-              onCreateProduct={handleCreateProduct}
-              onDeleteProduct={handleDeleteProduct}
-              onCreateUser={handleCreateUser}
-              onToggleUserActive={handleToggleUserActive}
-              onDeleteUser={handleDeleteUser}
-              onUpdateOrderStatus={handleUpdateOrderStatus}
-            />
-          }
-        />
-        <Route path="/info" element={<InfoPage />} />
-        {Object.entries(staticContent).map(([path, config]) => (
-          <Route
-            key={path}
-            path={path}
-            element={<StaticPage title={config.title} description={config.description} bullets={config.bullets} />}
-          />
-        ))}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </div>
+      <Footer />
     </div>
   )
 }

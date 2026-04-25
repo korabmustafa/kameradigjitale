@@ -18,6 +18,30 @@ const categories: ProductCategory[] = ['Film Cameras', 'Digital Cameras', 'Lense
 const roles: AdminUserRole[] = ['admin', 'editor', 'support']
 const statuses: OrderStatus[] = ['New', 'Packed', 'Out for delivery', 'Delivered']
 
+const emptyProduct: Product = {
+  id: '',
+  productCode: '',
+  name: '',
+  category: 'Digital Cameras',
+  price: 0,
+  stock: 0,
+  image: '',
+  gallery: [],
+  description: '',
+  specs: []
+}
+
+const isSafeUrl = (value: string) => {
+  try {
+    const url = new URL(value)
+    return ['http:', 'https:'].includes(url.protocol)
+  } catch {
+    return false
+  }
+}
+
+const isValidProductCode = (value: string) => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value)
+
 export function AdminPage({
   products,
   users,
@@ -30,15 +54,10 @@ export function AdminPage({
   onUpdateOrderStatus
 }: AdminPageProps) {
   const [activeTab, setActiveTab] = useState<'products' | 'users' | 'orders'>('products')
-  const [productForm, setProductForm] = useState<Product>({
-    id: '',
-    name: '',
-    category: 'Digital Cameras',
-    price: 0,
-    stock: 0,
-    image: '',
-    description: ''
-  })
+  const [productForm, setProductForm] = useState<Product>(emptyProduct)
+  const [galleryInput, setGalleryInput] = useState('')
+  const [specsInput, setSpecsInput] = useState('')
+  const [productError, setProductError] = useState('')
   const [userForm, setUserForm] = useState<AdminUser>({
     id: '',
     name: '',
@@ -57,19 +76,53 @@ export function AdminPage({
 
   const handleProductSubmit = (event: FormEvent) => {
     event.preventDefault()
-    if (!productForm.id || !productForm.name || !productForm.image) {
+    setProductError('')
+
+    if (!productForm.id || !productForm.productCode || !productForm.name || !productForm.image) {
+      setProductError('Please fill all required fields: id, product code, name, and main image URL.')
       return
     }
-    onCreateProduct(productForm)
-    setProductForm({
-      id: '',
-      name: '',
-      category: 'Digital Cameras',
-      price: 0,
-      stock: 0,
-      image: '',
-      description: ''
-    })
+
+    if (!isValidProductCode(productForm.productCode)) {
+      setProductError('Product code must be slug format: lowercase letters/numbers and dashes only (e.g. nikon-z6).')
+      return
+    }
+
+    if (!isSafeUrl(productForm.image)) {
+      setProductError('Main image must be a valid http(s) URL.')
+      return
+    }
+
+    const gallery = galleryInput
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean)
+
+    if (gallery.some((url) => !isSafeUrl(url))) {
+      setProductError('Each gallery URL must be a valid http(s) URL.')
+      return
+    }
+
+    const specs = specsInput
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => {
+        const [label, ...valueParts] = line.split(':')
+        return { label: label?.trim() ?? '', value: valueParts.join(':').trim() }
+      })
+
+    const hasInvalidSpec = specs.some((spec) => !spec.label || !spec.value)
+
+    if (hasInvalidSpec) {
+      setProductError('Each spec line must follow format: Label: Value')
+      return
+    }
+
+    onCreateProduct({ ...productForm, gallery, specs })
+    setProductForm(emptyProduct)
+    setGalleryInput('')
+    setSpecsInput('')
   }
 
   const handleUserSubmit = (event: FormEvent) => {
@@ -121,6 +174,14 @@ export function AdminPage({
                 placeholder="Unique product id"
               />
               <input
+                value={productForm.productCode}
+                onChange={(event) =>
+                  setProductForm((state) => ({ ...state, productCode: event.target.value.trim().toLowerCase() }))
+                }
+                className="rounded-lg border border-slate-200 px-3 py-2"
+                placeholder="Product code for URL (e.g. nikon-z6)"
+              />
+              <input
                 value={productForm.name}
                 onChange={(event) => setProductForm((state) => ({ ...state, name: event.target.value }))}
                 className="rounded-lg border border-slate-200 px-3 py-2"
@@ -141,6 +202,7 @@ export function AdminPage({
                 onChange={(event) => setProductForm((state) => ({ ...state, price: Number(event.target.value) }))}
                 className="rounded-lg border border-slate-200 px-3 py-2"
                 placeholder="Price"
+                min={0}
               />
               <input
                 type="number"
@@ -148,12 +210,27 @@ export function AdminPage({
                 onChange={(event) => setProductForm((state) => ({ ...state, stock: Number(event.target.value) }))}
                 className="rounded-lg border border-slate-200 px-3 py-2"
                 placeholder="Stock"
+                min={0}
               />
               <input
                 value={productForm.image}
                 onChange={(event) => setProductForm((state) => ({ ...state, image: event.target.value }))}
                 className="rounded-lg border border-slate-200 px-3 py-2"
-                placeholder="Image URL"
+                placeholder="Main image URL"
+              />
+              <textarea
+                value={galleryInput}
+                onChange={(event) => setGalleryInput(event.target.value)}
+                className="rounded-lg border border-slate-200 px-3 py-2"
+                placeholder="Gallery image URLs separated by commas"
+                rows={3}
+              />
+              <textarea
+                value={specsInput}
+                onChange={(event) => setSpecsInput(event.target.value)}
+                className="rounded-lg border border-slate-200 px-3 py-2"
+                placeholder="Specs format: Brand: Nikon (one per line)"
+                rows={4}
               />
               <textarea
                 value={productForm.description}
@@ -162,6 +239,7 @@ export function AdminPage({
                 placeholder="Description"
                 rows={4}
               />
+              {productError ? <p className="rounded-lg bg-red-50 p-2 text-sm text-red-600">{productError}</p> : null}
               <button className="rounded-xl bg-ink px-4 py-2 font-bold text-white">Add Product</button>
             </form>
           </article>
@@ -177,6 +255,7 @@ export function AdminPage({
                     <p className="text-sm text-slate-600">
                       {product.category} · ${product.price} · Stock: {product.stock}
                     </p>
+                    <p className="text-xs text-slate-500">/{`products/${product.productCode}`}</p>
                   </div>
                   <button
                     onClick={() => onDeleteProduct(product.id)}
@@ -196,30 +275,10 @@ export function AdminPage({
           <article className="rounded-2xl bg-white p-6 shadow-playful">
             <h2 className="mb-4 text-xl font-black">Create User</h2>
             <form className="grid gap-3" onSubmit={handleUserSubmit}>
-              <input
-                value={userForm.id}
-                onChange={(event) => setUserForm((state) => ({ ...state, id: event.target.value }))}
-                className="rounded-lg border border-slate-200 px-3 py-2"
-                placeholder="Unique user id"
-              />
-              <input
-                value={userForm.name}
-                onChange={(event) => setUserForm((state) => ({ ...state, name: event.target.value }))}
-                className="rounded-lg border border-slate-200 px-3 py-2"
-                placeholder="Full name"
-              />
-              <input
-                type="email"
-                value={userForm.email}
-                onChange={(event) => setUserForm((state) => ({ ...state, email: event.target.value }))}
-                className="rounded-lg border border-slate-200 px-3 py-2"
-                placeholder="Email"
-              />
-              <select
-                value={userForm.role}
-                onChange={(event) => setUserForm((state) => ({ ...state, role: event.target.value as AdminUserRole }))}
-                className="rounded-lg border border-slate-200 px-3 py-2"
-              >
+              <input value={userForm.id} onChange={(event) => setUserForm((state) => ({ ...state, id: event.target.value }))} className="rounded-lg border border-slate-200 px-3 py-2" placeholder="Unique user id" />
+              <input value={userForm.name} onChange={(event) => setUserForm((state) => ({ ...state, name: event.target.value }))} className="rounded-lg border border-slate-200 px-3 py-2" placeholder="Full name" />
+              <input type="email" value={userForm.email} onChange={(event) => setUserForm((state) => ({ ...state, email: event.target.value }))} className="rounded-lg border border-slate-200 px-3 py-2" placeholder="Email" />
+              <select value={userForm.role} onChange={(event) => setUserForm((state) => ({ ...state, role: event.target.value as AdminUserRole }))} className="rounded-lg border border-slate-200 px-3 py-2">
                 {roles.map((role) => (
                   <option key={role}>{role}</option>
                 ))}
@@ -239,18 +298,12 @@ export function AdminPage({
                       {user.email} · {user.role}
                     </p>
                   </div>
-                  <button
-                    onClick={() => onToggleUserActive(user.id)}
-                    className={`rounded-lg px-3 py-1 text-sm font-semibold ${
+                  <button onClick={() => onToggleUserActive(user.id)} className={`rounded-lg px-3 py-1 text-sm font-semibold ${
                       user.active ? 'border border-emerald-200 text-emerald-700' : 'border border-slate-300 text-slate-600'
-                    }`}
-                  >
+                    }`}>
                     {user.active ? 'Active' : 'Inactive'}
                   </button>
-                  <button
-                    onClick={() => onDeleteUser(user.id)}
-                    className="rounded-lg border border-red-200 px-3 py-1 text-sm font-semibold text-red-500"
-                  >
+                  <button onClick={() => onDeleteUser(user.id)} className="rounded-lg border border-red-200 px-3 py-1 text-sm font-semibold text-red-500">
                     Delete
                   </button>
                 </article>
@@ -284,11 +337,7 @@ export function AdminPage({
                 </p>
                 <div className="mt-3 flex items-center gap-2">
                   <label className="text-sm font-semibold">Status</label>
-                  <select
-                    value={order.status}
-                    onChange={(event) => onUpdateOrderStatus(order.id, event.target.value as OrderStatus)}
-                    className="rounded-lg border border-slate-200 px-2 py-1 text-sm"
-                  >
+                  <select value={order.status} onChange={(event) => onUpdateOrderStatus(order.id, event.target.value as OrderStatus)} className="rounded-lg border border-slate-200 px-2 py-1 text-sm">
                     {statuses.map((status) => (
                       <option key={status}>{status}</option>
                     ))}
