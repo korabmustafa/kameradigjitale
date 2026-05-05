@@ -2,6 +2,7 @@ import type { ProductCategory } from './products'
 
 export type NavSubcategory = {
   id: string
+  slug?: string
   title: string
   image: string
 }

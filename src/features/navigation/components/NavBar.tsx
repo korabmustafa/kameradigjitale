@@ -31,14 +31,14 @@ export function NavBar({ cartCount, categoryNavigation, menuItems }: NavBarProps
                 </NavLink>
 
                 {item.category && subcategories.length > 0 ? (
-                  <div className="pointer-events-none absolute left-0 top-full mt-3 w-[68rem] max-w-[calc(100vw-3rem)] translate-y-3 opacity-0 transition duration-200 group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100">
+                  <div className="pointer-events-none absolute left-0 top-full z-50 w-[68rem] max-w-[calc(100vw-3rem)] pt-3 opacity-0 transition duration-200 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100">
                     <div className="rounded-2xl border border-slate-800 bg-white/95 p-5 text-slate-900 shadow-2xl backdrop-blur">
                       <p className="mb-4 text-xs font-bold uppercase tracking-wide text-slate-500">Explore {item.label}</p>
                       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                         {subcategories.map((subcategory) => (
                           <Link
                             key={subcategory.id}
-                            to={`${item.path}?subcategory=${encodeURIComponent(subcategory.title)}`}
+                            to={`${item.path}?subcategory=${encodeURIComponent(subcategory.slug ?? subcategory.title)}`}
                             className="group/card block"
                           >
                             <div className="overflow-hidden rounded-xl bg-slate-100">

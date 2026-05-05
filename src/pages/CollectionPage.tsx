@@ -3,6 +3,15 @@ import { useSearchParams } from 'react-router-dom'
 import { ProductCard } from '../features/products/components/ProductCard'
 import type { Product } from '../data/products'
 
+
+const normalizeSubcategory = (value?: string | null) =>
+  value
+    ?.trim()
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '')
+
 type CollectionPageProps = {
   title: string
   subtitle: string
@@ -13,14 +22,15 @@ type CollectionPageProps = {
 export function CollectionPage({ title, subtitle, products, onAddToCart }: CollectionPageProps) {
   const [query, setQuery] = useState('')
   const [searchParams] = useSearchParams()
-  const selectedSubcategory = searchParams.get('subcategory')?.toLowerCase()
+  const selectedSubcategory = normalizeSubcategory(searchParams.get('subcategory'))
 
   const filteredProducts = useMemo(
     () =>
       products.filter((product) => {
         const target = `${product.name} ${product.description}`.toLowerCase()
         const matchesQuery = target.includes(query.toLowerCase())
-        const matchesSubcategory = !selectedSubcategory || product.subcategory?.toLowerCase() === selectedSubcategory
+        const productSubcategory = normalizeSubcategory(product.subcategory)
+        const matchesSubcategory = !selectedSubcategory || productSubcategory === selectedSubcategory
         return matchesQuery && matchesSubcategory
       }),
     [products, query, selectedSubcategory]

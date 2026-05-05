@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { seedOrders, seedUsers, type AdminUser, type Order, type OrderStatus } from './data/admin'
-import { menuItems as seedMenuItems, seedCategoryNavigation, type CategoryNavigationMap, type MenuItem, type NavSubcategory } from './data/navigation'
+import { type CategoryNavigationMap, type MenuItem } from './data/navigation'
 import { seedProducts, type Product } from './data/products'
 import { api } from './lib/api'
 import { CartDrawer } from './features/cart/components/CartDrawer'
@@ -65,44 +65,18 @@ const dedupeCategoryNavigation = (input: CategoryNavigationMap) => {
   return result
 }
 
-const mergeProductSubcategories = (products: Product[], source: CategoryNavigationMap) => {
-  const merged: CategoryNavigationMap = dedupeCategoryNavigation(source)
-
-  products.forEach((product) => {
-    const title = product.subcategory?.trim()
-    if (!title) {
-      return
-    }
-
-    const items = merged[product.category] ?? []
-    const exists = items.some((item) => item.title.toLowerCase() === title.toLowerCase())
-
-    if (!exists) {
-      const id = `${product.category.toLowerCase().replace(/\s+/g, '-')}-${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
-      const nextEntry: NavSubcategory = { id, title, image: product.image }
-      merged[product.category] = [...items, nextEntry]
-    }
-  })
-
-  return merged
-}
 
 export function App() {
   const [products, setProducts] = useState<Product[]>(seedProducts)
-  const [menuItems, setMenuItems] = useState<MenuItem[]>(seedMenuItems)
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([])
   const [users, setUsers] = useState<AdminUser[]>(seedUsers)
   const [orders, setOrders] = useState<Order[]>(seedOrders)
   const [cart, setCart] = useState<Record<string, number>>({})
   const [cartDrawerOpen, setCartDrawerOpen] = useState(false)
-  const [categoryNavigation, setCategoryNavigation] = useState<CategoryNavigationMap>(seedCategoryNavigation)
+  const [categoryNavigation, setCategoryNavigation] = useState<CategoryNavigationMap>({})
   const [apiError, setApiError] = useState('')
 
   const cartCount = useMemo(() => Object.values(cart).reduce((sum, qty) => sum + qty, 0), [cart])
-
-  const resolvedNavigation = useMemo(
-    () => mergeProductSubcategories(products, categoryNavigation),
-    [products, categoryNavigation]
-  )
 
 
   useEffect(() => {
@@ -206,7 +180,7 @@ export function App() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <NavBar cartCount={cartCount} categoryNavigation={resolvedNavigation} menuItems={menuItems} />
+      <NavBar cartCount={cartCount} categoryNavigation={categoryNavigation} menuItems={menuItems} />
       <div className="flex-1">
         <Routes>
           <Route path="/" element={<HomePage products={products} onAddToCart={handleAddToCart} />} />
