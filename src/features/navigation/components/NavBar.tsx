@@ -36,7 +36,11 @@ export function NavBar({ cartCount, categoryNavigation, menuItems }: NavBarProps
                       <p className="mb-4 text-xs font-bold uppercase tracking-wide text-slate-500">Explore {item.label}</p>
                       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                         {subcategories.map((subcategory) => (
-                          <Link key={subcategory.id} to={item.path} className="group/card block">
+                          <Link
+                            key={subcategory.id}
+                            to={`${item.path}?subcategory=${encodeURIComponent(subcategory.title)}`}
+                            className="group/card block"
+                          >
                             <div className="overflow-hidden rounded-xl bg-slate-100">
                               <img
                                 src={subcategory.image}

@@ -32,6 +32,26 @@ async function main() {
     create: { label, path, category: category ?? undefined, position: idx, active: true },
     update: { label, category: category ?? undefined, position: idx, active: true }
   })));
+
+  const navigationSubcategories = [
+    [ProductCategory.DIGITAL_CAMERAS, 'mirrorless', 'Mirrorless', 'https://images.unsplash.com/photo-1510127034890-ba27508e9f1c?auto=format&fit=crop&w=900&q=80'],
+    [ProductCategory.DIGITAL_CAMERAS, 'slr', 'SLR', 'https://images.unsplash.com/photo-1452780212940-6f5c0d14d848?auto=format&fit=crop&w=900&q=80'],
+    [ProductCategory.DIGITAL_CAMERAS, 'point-shoot', 'Point & Shoot', 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&w=900&q=80'],
+    [ProductCategory.LENSES, 'prime-lenses', 'Prime Lenses', 'https://images.unsplash.com/photo-1529078155058-5d716f45d604?auto=format&fit=crop&w=900&q=80'],
+    [ProductCategory.LENSES, 'zoom-lenses', 'Zoom Lenses', 'https://images.unsplash.com/photo-1617005082133-548c4dd27f35?auto=format&fit=crop&w=900&q=80'],
+    [ProductCategory.ACCESSORIES, 'bags-cases', 'Bags & Cases', 'https://images.unsplash.com/photo-1512790182412-b19e6d62bc39?auto=format&fit=crop&w=900&q=80'],
+    [ProductCategory.ACCESSORIES, 'straps', 'Straps', 'https://images.unsplash.com/photo-1516724562728-afc824a36e84?auto=format&fit=crop&w=900&q=80']
+  ] as const;
+
+  await Promise.all(
+    navigationSubcategories.map(([category, slug, title, image], idx) =>
+      prisma.navigationSubcategory.upsert({
+        where: { category_slug: { category, slug } },
+        create: { category, slug, title, image, position: idx, active: true },
+        update: { title, image, position: idx, active: true }
+      })
+    )
+  );
 }
 
 main().finally(async () => prisma.$disconnect());

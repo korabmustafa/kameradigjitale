@@ -1,6 +1,6 @@
 import type { Product } from '../data/products'
 import type { AdminUser, Order, OrderStatus } from '../data/admin'
-import type { MenuItem } from '../data/navigation'
+import type { CategoryNavigationMap, MenuItem, NavSubcategory } from '../data/navigation'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:4000/api/v1'
 
@@ -11,6 +11,14 @@ const categoryLabelMap: Record<string, Product['category']> = {
   FILM: 'Film',
   ACCESSORIES: 'Accessories',
   SUPPLIES: 'Supplies'
+}
+const categoryEnumMap: Record<Product['category'], string> = {
+  'Film Cameras': 'FILM_CAMERAS',
+  'Digital Cameras': 'DIGITAL_CAMERAS',
+  Lenses: 'LENSES',
+  Film: 'FILM',
+  Accessories: 'ACCESSORIES',
+  Supplies: 'SUPPLIES'
 }
 
 type ApiProduct = {
@@ -76,6 +84,16 @@ export const api = {
     const menu = await request<Array<{ label: string; path: string; category?: string | null }>>('/navigation/menu')
     return menu.map((item) => ({ ...item, category: item.category ? categoryLabelMap[item.category] : undefined })) as MenuItem[]
   },
+  async getNavigationSubcategories() {
+    const items = await request<Array<{ id: string; slug: string; title: string; image: string; category: string }>>('/navigation/subcategories')
+    return items.reduce<CategoryNavigationMap>((acc, item) => {
+      const category = categoryLabelMap[item.category]
+      if (!category) return acc
+      const nextItem: NavSubcategory = { id: item.id, title: item.title, image: item.image }
+      acc[category] = [...(acc[category] ?? []), nextItem]
+      return acc
+    }, {})
+  },
 
   async getOrders() {
     const orders = await request<any[]>('/orders')
@@ -110,6 +128,12 @@ export const api = {
     request<any>(`/users/admin/${id}/toggle-active`, { method: 'PATCH' }).then((user) => ({ ...user, role: roleMap[user.role] ?? 'support' }) as AdminUser),
 
   deleteAdminUser: (id: string) => request(`/users/admin/${id}`, { method: 'DELETE' }),
+  createNavigationSubcategory: (payload: { category: Product['category']; title: string; image: string; slug: string }) =>
+    request<{ id: string; title: string; image: string }>(`/navigation/subcategories`, {
+      method: 'POST',
+      body: JSON.stringify({ ...payload, category: categoryEnumMap[payload.category] })
+    }),
+  deleteNavigationSubcategory: (id: string) => request(`/navigation/subcategories/${id}`, { method: 'DELETE' }),
 
   updateOrderStatus: (id: string, status: 'NEW' | 'PAID' | 'PACKED' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED') =>
     request<any>(`/orders/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }).then((order) => ({ ...order, status: orderStatusMap[order.status] ?? 'New' }) as Order),
