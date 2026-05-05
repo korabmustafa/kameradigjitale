@@ -93,8 +93,8 @@ export function AdminPage({
     event.preventDefault()
     setProductError('')
 
-    if (!productForm.id || !productForm.productCode || !productForm.name || !productForm.image) {
-      setProductError('Please fill all required fields: id, product code, name, and main image URL.')
+    if (!productForm.productCode || !productForm.name || !productForm.image) {
+      setProductError('Please fill all required fields: product code, name, and main image URL.')
       return
     }
 
@@ -136,6 +136,7 @@ export function AdminPage({
 
     onCreateProduct({
       ...productForm,
+      id: productForm.id || `tmp-${productForm.productCode}`,
       subcategory: productForm.subcategory?.trim() || undefined,
       gallery,
       specs
@@ -197,10 +198,10 @@ export function AdminPage({
 
   const handleUserSubmit = (event: FormEvent) => {
     event.preventDefault()
-    if (!userForm.id || !userForm.name || !userForm.email) {
+    if (!userForm.name || !userForm.email) {
       return
     }
-    onCreateUser(userForm)
+    onCreateUser({ ...userForm, id: userForm.id || `tmp-${Date.now()}` })
     setUserForm({ id: '', name: '', email: '', role: 'editor', active: true })
   }
 

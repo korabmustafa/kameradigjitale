@@ -1,13 +1,13 @@
 import { Link, NavLink } from 'react-router-dom'
-import type { CategoryNavigationMap } from '../../../data/navigation'
-import { menuItems } from '../../../data/navigation'
+import type { CategoryNavigationMap, MenuItem } from '../../../data/navigation'
 
 type NavBarProps = {
   cartCount: number
   categoryNavigation: CategoryNavigationMap
+  menuItems: MenuItem[]
 }
 
-export function NavBar({ cartCount, categoryNavigation }: NavBarProps) {
+export function NavBar({ cartCount, categoryNavigation, menuItems }: NavBarProps) {
   return (
     <header className="sticky top-0 z-40 border-b border-slate-800 bg-ink text-white shadow-playful">
       <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-4 px-6 py-4">
