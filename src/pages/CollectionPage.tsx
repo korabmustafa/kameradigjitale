@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { ProductCard } from '../features/products/components/ProductCard'
 import type { Product } from '../data/products'
 
@@ -11,14 +12,18 @@ type CollectionPageProps = {
 
 export function CollectionPage({ title, subtitle, products, onAddToCart }: CollectionPageProps) {
   const [query, setQuery] = useState('')
+  const [searchParams] = useSearchParams()
+  const selectedSubcategory = searchParams.get('subcategory')?.toLowerCase()
 
   const filteredProducts = useMemo(
     () =>
       products.filter((product) => {
         const target = `${product.name} ${product.description}`.toLowerCase()
-        return target.includes(query.toLowerCase())
+        const matchesQuery = target.includes(query.toLowerCase())
+        const matchesSubcategory = !selectedSubcategory || product.subcategory?.toLowerCase() === selectedSubcategory
+        return matchesQuery && matchesSubcategory
       }),
-    [products, query]
+    [products, query, selectedSubcategory]
   )
 
   return (

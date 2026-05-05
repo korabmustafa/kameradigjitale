@@ -14,7 +14,7 @@ type AdminPageProps = {
   onToggleUserActive: (id: string) => void
   onDeleteUser: (id: string) => void
   onUpdateOrderStatus: (id: string, status: OrderStatus) => void
-  onUpdateCategoryNavigation: (nextNavigation: CategoryNavigationMap) => void
+  onUpdateCategoryNavigation: (nextNavigation: CategoryNavigationMap) => Promise<void> | void
 }
 
 const categories: ProductCategory[] = ['Film Cameras', 'Digital Cameras', 'Lenses', 'Film', 'Accessories', 'Supplies']

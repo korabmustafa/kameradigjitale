@@ -108,15 +108,17 @@ export function App() {
   useEffect(() => {
     const loadInitialData = async () => {
       try {
-        const [productsResponse, navigationResponse, ordersResponse, usersResponse] = await Promise.all([
+        const [productsResponse, navigationResponse, subcategoriesResponse, ordersResponse, usersResponse] = await Promise.all([
           api.getProducts({ page: 1, limit: 120 }),
           api.getNavigationMenu(),
+          api.getNavigationSubcategories(),
           api.getOrders(),
           api.getAdminUsers()
         ])
 
         setProducts(productsResponse.items)
         setMenuItems(navigationResponse)
+        setCategoryNavigation(dedupeCategoryNavigation(subcategoriesResponse))
         setOrders(ordersResponse)
         setUsers(usersResponse)
       } catch (error) {
@@ -173,8 +175,33 @@ export function App() {
     setOrders((state) => state.map((order) => (order.id === id ? updated : order)))
   }
 
-  const handleUpdateCategoryNavigation = (nextNavigation: CategoryNavigationMap) => {
-    setCategoryNavigation(dedupeCategoryNavigation(nextNavigation))
+  const handleUpdateCategoryNavigation = async (nextNavigation: CategoryNavigationMap) => {
+    const current = dedupeCategoryNavigation(categoryNavigation)
+    const next = dedupeCategoryNavigation(nextNavigation)
+
+    for (const [category, nextItems] of Object.entries(next)) {
+      const typedCategory = category as Product['category']
+      const currentItems = current[typedCategory] ?? []
+      for (const item of nextItems ?? []) {
+        if (!currentItems.some((existing) => existing.id === item.id)) {
+          const slug = item.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+          await api.createNavigationSubcategory({ category: typedCategory, title: item.title, image: item.image, slug })
+        }
+      }
+    }
+
+    for (const [category, currentItems] of Object.entries(current)) {
+      const typedCategory = category as Product['category']
+      const nextItems = next[typedCategory] ?? []
+      for (const item of currentItems ?? []) {
+        if (!nextItems.some((existing) => existing.id === item.id)) {
+          await api.deleteNavigationSubcategory(item.id)
+        }
+      }
+    }
+
+    const fresh = await api.getNavigationSubcategories()
+    setCategoryNavigation(dedupeCategoryNavigation(fresh))
   }
 
   return (
@@ -219,7 +246,7 @@ export function App() {
                 products={products}
                 users={users}
                 orders={orders}
-                categoryNavigation={resolvedNavigation}
+                categoryNavigation={categoryNavigation}
                 onCreateProduct={handleCreateProduct}
                 onDeleteProduct={handleDeleteProduct}
                 onCreateUser={handleCreateUser}
