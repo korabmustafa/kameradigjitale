@@ -89,7 +89,7 @@ export const api = {
     return items.reduce<CategoryNavigationMap>((acc, item) => {
       const category = categoryLabelMap[item.category]
       if (!category) return acc
-      const nextItem: NavSubcategory = { id: item.id, title: item.title, image: item.image }
+      const nextItem: NavSubcategory = { id: item.id, slug: item.slug, title: item.title, image: item.image }
       acc[category] = [...(acc[category] ?? []), nextItem]
       return acc
     }, {})

@@ -1,10 +1,19 @@
-import { Body, Controller, Delete, Get, Param, Post } from '@nestjs/common';
+import { BadRequestException, Body, ConflictException, Controller, Delete, Get, Param, Post } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ProductCategory } from '@prisma/client';
 
 @Controller('navigation')
 export class NavigationController {
   constructor(private readonly prisma: PrismaService) {}
+
+  private toSlug(value: string) {
+    return value
+      .trim()
+      .toLowerCase()
+      .replace(/&/g, ' and ')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '');
+  }
 
   @Get('menu')
   menu() {
@@ -29,8 +38,28 @@ export class NavigationController {
 
   @Post('subcategories')
   async createSubcategory(
-    @Body() body: { category: ProductCategory; title: string; image: string; slug: string }
+    @Body() body: { category: ProductCategory; title: string; image: string; slug?: string }
   ) {
+    const title = body.title?.trim();
+    const image = body.image?.trim();
+
+    if (!title || !image) {
+      throw new BadRequestException('title and image are required');
+    }
+
+    const slug = this.toSlug(body.slug?.trim() || title);
+    if (!slug) {
+      throw new BadRequestException('invalid subcategory slug');
+    }
+
+    const duplicate = await this.prisma.navigationSubcategory.findFirst({
+      where: { category: body.category, slug }
+    });
+
+    if (duplicate) {
+      throw new ConflictException('Subcategory already exists in this category');
+    }
+
     const maxPosition = await this.prisma.navigationSubcategory.aggregate({
       where: { category: body.category },
       _max: { position: true }
@@ -39,9 +68,9 @@ export class NavigationController {
     return this.prisma.navigationSubcategory.create({
       data: {
         category: body.category,
-        slug: body.slug,
-        title: body.title,
-        image: body.image,
+        slug,
+        title,
+        image,
         position: (maxPosition._max.position ?? -1) + 1,
         active: true
       }
