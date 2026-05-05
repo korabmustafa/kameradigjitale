@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { seedOrders, seedUsers, type AdminUser, type Order, type OrderStatus } from './data/admin'
-import { menuItems, seedCategoryNavigation, type CategoryNavigationMap, type NavSubcategory } from './data/navigation'
+import { menuItems as seedMenuItems, seedCategoryNavigation, type CategoryNavigationMap, type MenuItem, type NavSubcategory } from './data/navigation'
 import { seedProducts, type Product } from './data/products'
+import { api } from './lib/api'
 import { CartDrawer } from './features/cart/components/CartDrawer'
 import { Footer } from './features/layout/components/Footer'
 import { NavBar } from './features/navigation/components/NavBar'
@@ -88,11 +89,13 @@ const mergeProductSubcategories = (products: Product[], source: CategoryNavigati
 
 export function App() {
   const [products, setProducts] = useState<Product[]>(seedProducts)
+  const [menuItems, setMenuItems] = useState<MenuItem[]>(seedMenuItems)
   const [users, setUsers] = useState<AdminUser[]>(seedUsers)
   const [orders, setOrders] = useState<Order[]>(seedOrders)
   const [cart, setCart] = useState<Record<string, number>>({})
   const [cartDrawerOpen, setCartDrawerOpen] = useState(false)
   const [categoryNavigation, setCategoryNavigation] = useState<CategoryNavigationMap>(seedCategoryNavigation)
+  const [apiError, setApiError] = useState('')
 
   const cartCount = useMemo(() => Object.values(cart).reduce((sum, qty) => sum + qty, 0), [cart])
 
@@ -101,45 +104,73 @@ export function App() {
     [products, categoryNavigation]
   )
 
+
+  useEffect(() => {
+    const loadInitialData = async () => {
+      try {
+        const [productsResponse, navigationResponse, ordersResponse, usersResponse] = await Promise.all([
+          api.getProducts({ page: 1, limit: 120 }),
+          api.getNavigationMenu(),
+          api.getOrders(),
+          api.getAdminUsers()
+        ])
+
+        setProducts(productsResponse.items)
+        setMenuItems(navigationResponse)
+        setOrders(ordersResponse)
+        setUsers(usersResponse)
+      } catch (error) {
+        setApiError(error instanceof Error ? error.message : 'Unable to load backend data')
+      }
+    }
+
+    void loadInitialData()
+  }, [])
+
   const handleAddToCart = (id: string) => {
     setCart((state) => ({ ...state, [id]: (state[id] ?? 0) + 1 }))
     setCartDrawerOpen(true)
   }
 
-  const handleCreateProduct = (product: Product) => {
-    setProducts((state) => {
-      const exists = state.some((item) => item.id === product.id || item.productCode === product.productCode)
-      if (exists) {
-        return state
-      }
-      return [product, ...state]
+  const handleCreateProduct = async (product: Product) => {
+    const created = await api.createProduct({
+      productCode: product.productCode,
+      name: product.name,
+      category: product.category,
+      price: product.price,
+      stock: product.stock,
+      image: product.image,
+      description: product.description,
+      subcategory: product.subcategory,
+      featured: product.featured
     })
+    setProducts((state) => [created, ...state.filter((item) => item.id !== created.id)])
   }
 
-  const handleDeleteProduct = (id: string) => {
+  const handleDeleteProduct = async (id: string) => {
+    await api.deleteProduct(id)
     setProducts((state) => state.filter((product) => product.id !== id))
   }
 
-  const handleCreateUser = (user: AdminUser) => {
-    setUsers((state) => {
-      const exists = state.some((item) => item.id === user.id || item.email === user.email)
-      if (exists) {
-        return state
-      }
-      return [user, ...state]
-    })
+  const handleCreateUser = async (user: AdminUser) => {
+    const created = await api.createAdminUser({ name: user.name, email: user.email, role: user.role.toUpperCase() as 'ADMIN' | 'EDITOR' | 'SUPPORT' })
+    setUsers((state) => [created, ...state.filter((item) => item.id !== created.id)])
   }
 
-  const handleToggleUserActive = (id: string) => {
-    setUsers((state) => state.map((user) => (user.id === id ? { ...user, active: !user.active } : user)))
+  const handleToggleUserActive = async (id: string) => {
+    const updated = await api.toggleAdminUser(id)
+    setUsers((state) => state.map((user) => (user.id === id ? updated : user)))
   }
 
-  const handleDeleteUser = (id: string) => {
+  const handleDeleteUser = async (id: string) => {
+    await api.deleteAdminUser(id)
     setUsers((state) => state.filter((user) => user.id !== id))
   }
 
-  const handleUpdateOrderStatus = (id: string, status: OrderStatus) => {
-    setOrders((state) => state.map((order) => (order.id === id ? { ...order, status } : order)))
+  const handleUpdateOrderStatus = async (id: string, status: OrderStatus) => {
+    const backendStatus = status === 'New' ? 'NEW' : status === 'Packed' ? 'PACKED' : status === 'Out for delivery' ? 'SHIPPED' : 'DELIVERED'
+    const updated = await api.updateOrderStatus(id, backendStatus)
+    setOrders((state) => state.map((order) => (order.id === id ? updated : order)))
   }
 
   const handleUpdateCategoryNavigation = (nextNavigation: CategoryNavigationMap) => {
@@ -148,7 +179,7 @@ export function App() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <NavBar cartCount={cartCount} categoryNavigation={resolvedNavigation} />
+      <NavBar cartCount={cartCount} categoryNavigation={resolvedNavigation} menuItems={menuItems} />
       <div className="flex-1">
         <Routes>
           <Route path="/" element={<HomePage products={products} onAddToCart={handleAddToCart} />} />
@@ -157,7 +188,7 @@ export function App() {
             element={
               <CollectionPage
                 title="Browse Cameras & Accessories"
-                subtitle="Everything in one place while backend APIs are being prepared."
+                subtitle="Everything in one place, synced from backend APIs."
                 products={products}
                 onAddToCart={handleAddToCart}
               />
@@ -180,7 +211,7 @@ export function App() {
               />
             ))}
           <Route path="/products/:productCode" element={<ProductDetailPage products={products} onAddToCart={handleAddToCart} />} />
-          <Route path="/checkout" element={<CheckoutPage cart={cart} products={products} />} />
+          <Route path="/checkout" element={<CheckoutPage cart={cart} products={products} onOrderCreated={(order) => setOrders((state) => [order, ...state])} />} />
           <Route
             path="/admin"
             element={
@@ -209,6 +240,7 @@ export function App() {
           ))}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        {apiError ? <p className="mx-auto mt-2 max-w-7xl rounded-xl bg-amber-50 px-4 py-2 text-sm text-amber-700">Backend sync warning: {apiError}</p> : null}
       </div>
       <Footer />
       <CartDrawer open={cartDrawerOpen} cart={cart} products={products} onClose={() => setCartDrawerOpen(false)} />

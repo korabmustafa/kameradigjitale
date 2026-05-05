@@ -1,0 +1,103 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ProductCategory {
+  FILM_CAMERAS
+  DIGITAL_CAMERAS
+  LENSES
+  FILM
+  ACCESSORIES
+  SUPPLIES
+}
+
+enum OrderStatus {
+  NEW
+  PAID
+  PACKED
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum UserRole {
+  ADMIN
+  EDITOR
+  SUPPORT
+}
+
+model Product {
+  id          String         @id @default(uuid()) @db.Uuid
+  productCode String         @unique
+  name        String
+  category    ProductCategory
+  price       Decimal        @db.Decimal(10, 2)
+  stock       Int
+  image       String
+  description String
+  subcategory String?
+  featured    Boolean        @default(false)
+  gallery     ProductGallery[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  orderItems  OrderItem[]
+}
+
+model ProductGallery {
+  id        BigInt   @id @default(autoincrement())
+  productId String   @db.Uuid
+  imageUrl  String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model AdminUser {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  email     String   @unique
+  role      UserRole
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model Order {
+  id           String      @id @default(uuid()) @db.Uuid
+  customerName String
+  email        String
+  phone        String
+  address      String
+  status       OrderStatus @default(NEW)
+  total        Decimal     @db.Decimal(10, 2)
+  createdAt    DateTime    @default(now())
+  items        OrderItem[]
+}
+
+model OrderItem {
+  id        BigInt   @id @default(autoincrement())
+  orderId   String   @db.Uuid
+  productId String   @db.Uuid
+  quantity  Int
+  unitPrice Decimal  @db.Decimal(10, 2)
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id])
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model MenuItem {
+  id        String   @id @default(uuid()) @db.Uuid
+  label     String
+  path      String
+  category  ProductCategory?
+  position  Int
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@unique([path])
+  @@index([position, active])
+}

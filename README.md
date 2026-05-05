@@ -73,3 +73,7 @@ Replace local state handlers in `src/App.tsx` with API calls to your backend pro
 - `DELETE /products/:id`
 - `POST /orders` (cash-on-delivery orders)
 
+
+
+## Backend
+A NestJS backend is now available under `backend/`. See `backend/README.md` for API and PostgreSQL setup.
