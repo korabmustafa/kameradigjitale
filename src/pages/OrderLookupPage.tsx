@@ -2,6 +2,7 @@ import { FormEvent, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import type { Order } from '../data/admin'
 import { api } from '../lib/api'
+import { useNotifications } from '../features/notifications/notificationContext'
 
 export function OrderLookupPage() {
   const [searchParams] = useSearchParams()
@@ -10,6 +11,7 @@ export function OrderLookupPage() {
   const [order, setOrder] = useState<Order | null>(null)
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
+  const { notifyError } = useNotifications()
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
@@ -17,7 +19,9 @@ export function OrderLookupPage() {
     setOrder(null)
 
     if (!orderNumber.trim() || !email.trim()) {
-      setMessage('Enter the order number from your email and the email address used at checkout.')
+      const validationMessage = 'Enter the order number from your email and the email address used at checkout.'
+      setMessage(validationMessage)
+      notifyError(validationMessage, { title: 'Order lookup validation error' })
       return
     }
 
@@ -26,7 +30,9 @@ export function OrderLookupPage() {
       const result = await api.lookupOrder({ orderNumber: orderNumber.trim(), email: email.trim() })
       setOrder(result)
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Could not find that order.')
+      const errorMessage = error instanceof Error ? error.message : 'Could not find that order.'
+      setMessage(errorMessage)
+      notifyError(errorMessage, { title: 'Order lookup error' })
     } finally {
       setLoading(false)
     }

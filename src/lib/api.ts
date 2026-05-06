@@ -21,6 +21,27 @@ const categoryEnumMap: Record<Product['category'], string> = {
   Supplies: 'SUPPLIES',
 }
 
+
+type ApiErrorPayload = {
+  message?: string | string[]
+  error?: string
+  statusCode?: number
+}
+
+const formatApiError = (payload: string, fallback: string) => {
+  if (!payload) return fallback
+
+  try {
+    const parsed = JSON.parse(payload) as ApiErrorPayload
+    if (Array.isArray(parsed.message)) {
+      return parsed.message.join(' ')
+    }
+    return parsed.message ?? parsed.error ?? fallback
+  } catch {
+    return payload
+  }
+}
+
 type ApiProduct = {
   id: string
   productCode: string
@@ -59,8 +80,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   })
 
   if (!response.ok) {
-    const message = await response.text()
-    throw new Error(message || `Request failed with status ${response.status}`)
+    const payload = await response.text()
+    throw new Error(formatApiError(payload, `Request failed with status ${response.status}`))
   }
 
   return response.json() as Promise<T>

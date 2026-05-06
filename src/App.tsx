@@ -8,6 +8,7 @@ import { CartDrawer } from './features/cart/components/CartDrawer'
 import { Footer } from './features/layout/components/Footer'
 import { NavBar } from './features/navigation/components/NavBar'
 import { ProductDetailPage } from './features/products/pages/ProductDetailPage'
+import { useNotifications } from './features/notifications/notificationContext'
 import { AdminPage } from './pages/AdminPage'
 import { CheckoutPage } from './pages/CheckoutPage'
 import { OrderLookupPage } from './pages/OrderLookupPage'
@@ -52,6 +53,8 @@ const staticContent = {
   },
 } as const
 
+const getErrorMessage = (error: unknown, fallback: string) => (error instanceof Error ? error.message : fallback)
+
 const dedupeCategoryNavigation = (input: CategoryNavigationMap) => {
   const result: CategoryNavigationMap = {}
 
@@ -82,8 +85,9 @@ export function App() {
   const [cart, setCart] = useState<Record<string, number>>({})
   const [cartDrawerOpen, setCartDrawerOpen] = useState(false)
   const [categoryNavigation, setCategoryNavigation] = useState<CategoryNavigationMap>({})
-  const [apiError, setApiError] = useState('')
   const [adminToken, setAdminToken] = useState(() => sessionStorage.getItem('adminToken') ?? '')
+
+  const { notifyError } = useNotifications()
 
   const cartCount = useMemo(() => Object.values(cart).reduce((sum, qty) => sum + qty, 0), [cart])
 
@@ -100,12 +104,12 @@ export function App() {
         setMenuItems(navigationResponse)
         setCategoryNavigation(dedupeCategoryNavigation(subcategoriesResponse))
       } catch (error) {
-        setApiError(error instanceof Error ? error.message : 'Unable to load backend data')
+        notifyError(getErrorMessage(error, 'Unable to load backend data'), { title: 'Backend sync warning' })
       }
     }
 
     void loadInitialData()
-  }, [])
+  }, [notifyError])
 
   const handleAddToCart = (id: string) => {
     setCart((state) => ({ ...state, [id]: (state[id] ?? 0) + 1 }))
@@ -142,59 +146,81 @@ export function App() {
         setUsers(usersResponse)
       } catch (error) {
         handleAdminLogout()
-        setApiError(error instanceof Error ? error.message : 'Unable to load admin data')
+        notifyError(getErrorMessage(error, 'Unable to load admin data'), { title: 'Admin session error' })
       }
     }
 
     void loadAdminData()
-  }, [adminToken])
+  }, [adminToken, notifyError])
 
   const handleCreateProduct = async (product: Product) => {
-    const created = await api.createProduct(
-      {
-        id: product.id || undefined,
-        productCode: product.productCode,
-        name: product.name,
-        category: product.category,
-        price: product.price,
-        stock: product.stock,
-        image: product.image,
-        description: product.description,
-        subcategory: product.subcategory,
-        featured: product.featured,
-        gallery: product.gallery,
-        specs: product.specs,
-      },
-      adminToken,
-    )
-    setProducts((state) => [created, ...state.filter((item) => item.id !== created.id)])
+    try {
+      const created = await api.createProduct(
+        {
+          id: product.id || undefined,
+          productCode: product.productCode,
+          name: product.name,
+          category: product.category,
+          price: product.price,
+          stock: product.stock,
+          image: product.image,
+          description: product.description,
+          subcategory: product.subcategory,
+          featured: product.featured,
+          gallery: product.gallery,
+          specs: product.specs,
+        },
+        adminToken,
+      )
+      setProducts((state) => [created, ...state.filter((item) => item.id !== created.id)])
+    } catch (error) {
+      notifyError(getErrorMessage(error, 'Unable to save product'), { title: 'Product error' })
+      throw error
+    }
   }
 
   const handleDeleteProduct = async (id: string) => {
-    await api.deleteProduct(id, adminToken)
-    setProducts((state) => state.filter((product) => product.id !== id))
+    try {
+      await api.deleteProduct(id, adminToken)
+      setProducts((state) => state.filter((product) => product.id !== id))
+    } catch (error) {
+      notifyError(getErrorMessage(error, 'Unable to delete product'), { title: 'Product error' })
+    }
   }
 
   const handleCreateUser = async (user: AdminUser) => {
-    const created = await api.createAdminUser(
-      {
-        name: user.name,
-        email: user.email,
-        role: user.role.toUpperCase() as 'ADMIN' | 'EDITOR' | 'SUPPORT',
-      },
-      adminToken,
-    )
-    setUsers((state) => [created, ...state.filter((item) => item.id !== created.id)])
+    try {
+      const created = await api.createAdminUser(
+        {
+          name: user.name,
+          email: user.email,
+          role: user.role.toUpperCase() as 'ADMIN' | 'EDITOR' | 'SUPPORT',
+        },
+        adminToken,
+      )
+      setUsers((state) => [created, ...state.filter((item) => item.id !== created.id)])
+    } catch (error) {
+      notifyError(getErrorMessage(error, 'Unable to create user'), { title: 'User error' })
+      throw error
+    }
   }
 
   const handleToggleUserActive = async (id: string) => {
-    const updated = await api.toggleAdminUser(id, adminToken)
-    setUsers((state) => state.map((user) => (user.id === id ? updated : user)))
+    try {
+      const updated = await api.toggleAdminUser(id, adminToken)
+      setUsers((state) => state.map((user) => (user.id === id ? updated : user)))
+    } catch (error) {
+      notifyError(getErrorMessage(error, 'Unable to update user'), { title: 'User error' })
+    }
   }
 
   const handleDeleteUser = async (id: string) => {
-    await api.deleteAdminUser(id, adminToken)
-    setUsers((state) => state.filter((user) => user.id !== id))
+    try {
+      await api.deleteAdminUser(id, adminToken)
+      setUsers((state) => state.filter((user) => user.id !== id))
+    } catch (error) {
+      notifyError(getErrorMessage(error, 'Unable to delete user'), { title: 'User error' })
+    }
   }
 
   const handleUpdateOrderStatus = async (id: string, status: OrderStatus) => {
@@ -206,48 +232,57 @@ export function App() {
       Delivered: 'DELIVERED',
       Cancelled: 'CANCELLED',
     }
-    const updated = await api.updateOrderStatus(id, statusMap[status], adminToken)
-    setOrders((state) => state.map((order) => (order.id === id ? updated : order)))
+    try {
+      const updated = await api.updateOrderStatus(id, statusMap[status], adminToken)
+      setOrders((state) => state.map((order) => (order.id === id ? updated : order)))
+    } catch (error) {
+      notifyError(getErrorMessage(error, 'Unable to update order status'), { title: 'Order error' })
+    }
   }
 
   const handleUpdateCategoryNavigation = async (nextNavigation: CategoryNavigationMap) => {
-    const current = dedupeCategoryNavigation(categoryNavigation)
-    const next = dedupeCategoryNavigation(nextNavigation)
+    try {
+      const current = dedupeCategoryNavigation(categoryNavigation)
+      const next = dedupeCategoryNavigation(nextNavigation)
 
-    for (const [category, nextItems] of Object.entries(next)) {
-      const typedCategory = category as Product['category']
-      const currentItems = current[typedCategory] ?? []
-      for (const item of nextItems ?? []) {
-        if (!currentItems.some((existing) => existing.id === item.id)) {
-          const slug = item.title
-            .toLowerCase()
-            .replace(/[^a-z0-9]+/g, '-')
-            .replace(/(^-|-$)/g, '')
-          await api.createNavigationSubcategory(
-            {
-              category: typedCategory,
-              title: item.title,
-              image: item.image,
-              slug,
-            },
-            adminToken,
-          )
+      for (const [category, nextItems] of Object.entries(next)) {
+        const typedCategory = category as Product['category']
+        const currentItems = current[typedCategory] ?? []
+        for (const item of nextItems ?? []) {
+          if (!currentItems.some((existing) => existing.id === item.id)) {
+            const slug = item.title
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, '-')
+              .replace(/(^-|-$)/g, '')
+            await api.createNavigationSubcategory(
+              {
+                category: typedCategory,
+                title: item.title,
+                image: item.image,
+                slug,
+              },
+              adminToken,
+            )
+          }
         }
       }
-    }
 
-    for (const [category, currentItems] of Object.entries(current)) {
-      const typedCategory = category as Product['category']
-      const nextItems = next[typedCategory] ?? []
-      for (const item of currentItems ?? []) {
-        if (!nextItems.some((existing) => existing.id === item.id)) {
-          await api.deleteNavigationSubcategory(item.id, adminToken)
+      for (const [category, currentItems] of Object.entries(current)) {
+        const typedCategory = category as Product['category']
+        const nextItems = next[typedCategory] ?? []
+        for (const item of currentItems ?? []) {
+          if (!nextItems.some((existing) => existing.id === item.id)) {
+            await api.deleteNavigationSubcategory(item.id, adminToken)
+          }
         }
       }
-    }
 
-    const fresh = await api.getNavigationSubcategories()
-    setCategoryNavigation(dedupeCategoryNavigation(fresh))
+      const fresh = await api.getNavigationSubcategories()
+      setCategoryNavigation(dedupeCategoryNavigation(fresh))
+    } catch (error) {
+      notifyError(getErrorMessage(error, 'Unable to update navigation'), { title: 'Navigation error' })
+      throw error
+    }
   }
 
   return (
@@ -333,11 +368,6 @@ export function App() {
           ))}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-        {apiError ? (
-          <p className="mx-auto mt-2 max-w-7xl rounded-xl bg-amber-50 px-4 py-2 text-sm text-amber-700">
-            Backend sync warning: {apiError}
-          </p>
-        ) : null}
       </div>
       <Footer />
       <CartDrawer open={cartDrawerOpen} cart={cart} products={products} onClose={() => setCartDrawerOpen(false)} />
