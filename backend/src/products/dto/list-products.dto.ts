@@ -1,6 +1,22 @@
-import { IsIn, IsInt, IsOptional, IsPositive, IsString, Max, Min } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsPositive,
+  IsString,
+  Max,
+  Min,
+} from 'class-validator';
 
-const categories = ['Film Cameras', 'Digital Cameras', 'Lenses', 'Film', 'Accessories', 'Supplies'] as const;
+const categories = [
+  'Film Cameras',
+  'Digital Cameras',
+  'Lenses',
+  'Film',
+  'Accessories',
+  'Supplies',
+] as const;
 
 export class ListProductsDto {
   @IsOptional()
@@ -12,13 +28,15 @@ export class ListProductsDto {
   q?: string;
 
   @IsOptional()
+  @Type(() => Number)
   @IsInt()
   @Min(1)
   page = 1;
 
   @IsOptional()
+  @Type(() => Number)
   @IsInt()
   @IsPositive()
-  @Max(100)
+  @Max(200)
   limit = 12;
 }

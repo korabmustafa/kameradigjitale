@@ -241,12 +241,6 @@ export function AdminPage({
               <h2 className="mb-4 text-xl font-black">Create Product</h2>
               <form className="grid gap-3" onSubmit={handleProductSubmit}>
                 <input
-                  value={productForm.id}
-                  onChange={(event) => setProductForm((state) => ({ ...state, id: event.target.value }))}
-                  className="rounded-lg border border-slate-200 px-3 py-2"
-                  placeholder="Unique product id"
-                />
-                <input
                   value={productForm.productCode}
                   onChange={(event) =>
                     setProductForm((state) => ({ ...state, productCode: event.target.value.trim().toLowerCase() }))
@@ -285,6 +279,8 @@ export function AdminPage({
                     ))}
                   </select>
                 </label>
+               <label className="grid gap-1 text-sm font-semibold text-slate-700">
+                  <span>Price</span>
                 <input
                   type="number"
                   value={productForm.price}
@@ -293,6 +289,9 @@ export function AdminPage({
                   placeholder="Price"
                   min={0}
                 />
+               </label>
+               <label className="grid gap-1 text-sm font-semibold text-slate-700">
+                  <span>Stock</span>
                 <input
                   type="number"
                   value={productForm.stock}
@@ -301,6 +300,7 @@ export function AdminPage({
                   placeholder="Stock"
                   min={0}
                 />
+               </label>
                 <input
                   value={productForm.image}
                   onChange={(event) => setProductForm((state) => ({ ...state, image: event.target.value }))}
