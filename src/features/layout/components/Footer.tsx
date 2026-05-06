@@ -12,6 +12,9 @@ export function Footer() {
           <Link to="/condition" className="transition hover:text-ink">
             Condition Guide
           </Link>
+          <Link to="/order-lookup" className="transition hover:text-ink">
+            Order Status
+          </Link>
           <Link to="/sell" className="transition hover:text-ink">
             Sell Gear
           </Link>

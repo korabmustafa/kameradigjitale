@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { LookupOrderDto } from './dto/lookup-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { OrdersService } from './orders.service';
 
@@ -15,6 +16,11 @@ export class OrdersController {
   @Post()
   create(@Body() payload: CreateOrderDto) {
     return this.ordersService.create(payload);
+  }
+
+  @Post('lookup')
+  lookup(@Body() payload: LookupOrderDto) {
+    return this.ordersService.lookup(payload.orderNumber, payload.email);
   }
 
   @Patch(':id/status')

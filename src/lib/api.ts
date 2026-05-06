@@ -57,20 +57,38 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 const orderStatusMap: Record<string, OrderStatus> = {
   NEW: 'New',
-  PAID: 'Packed',
+  PAID: 'Paid',
   PACKED: 'Packed',
   SHIPPED: 'Out for delivery',
   DELIVERED: 'Delivered',
-  CANCELLED: 'Delivered'
+  CANCELLED: 'Cancelled'
 }
 
 const roleMap: Record<string, AdminUser['role']> = { ADMIN: 'admin', EDITOR: 'editor', SUPPORT: 'support' }
 
-type ApiOrder = Omit<Order, 'status'> & { status: string }
+type ApiOrderItem = {
+  quantity: number
+  unitPrice: number
+  product?: { name: string }
+}
+
+type ApiOrder = Omit<Order, 'status' | 'itemsSummary' | 'paymentMethod'> & {
+  status: string
+  items?: ApiOrderItem[]
+}
 
 type ApiAdminUser = Omit<AdminUser, 'role'> & { role: string }
 
-const toOrder = (order: ApiOrder): Order => ({ ...order, status: orderStatusMap[order.status] ?? 'New' })
+const toOrder = (order: ApiOrder): Order => ({
+  ...order,
+  total: Number(order.total),
+  itemsSummary:
+    order.items
+      ?.map((item) => `${item.product?.name ?? 'Product'} × ${item.quantity}`)
+      .join(', ') ?? 'Order items unavailable',
+  paymentMethod: 'Cash on Delivery',
+  status: orderStatusMap[order.status] ?? 'New'
+})
 
 const toAdminUser = (user: ApiAdminUser): AdminUser => ({ ...user, role: roleMap[user.role] ?? 'support' })
 
@@ -107,6 +125,9 @@ export const api = {
     const orders = await request<ApiOrder[]>('/orders')
     return orders.map(toOrder)
   },
+
+  lookupOrder: (payload: { orderNumber: string; email: string }) =>
+    request<ApiOrder>('/orders/lookup', { method: 'POST', body: JSON.stringify(payload) }).then(toOrder),
 
   async getAdminUsers() {
     const users = await request<ApiAdminUser[]>('/users/admin')

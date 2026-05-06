@@ -19,7 +19,7 @@ type AdminPageProps = {
 
 const categories: ProductCategory[] = ['Film Cameras', 'Digital Cameras', 'Lenses', 'Film', 'Accessories', 'Supplies']
 const roles: AdminUserRole[] = ['admin', 'editor', 'support']
-const statuses: OrderStatus[] = ['New', 'Packed', 'Out for delivery', 'Delivered']
+const statuses: OrderStatus[] = ['New', 'Paid', 'Packed', 'Out for delivery', 'Delivered', 'Cancelled']
 
 const emptyProduct: Product = {
   id: '',
@@ -519,9 +519,10 @@ export function AdminPage({
               <article key={order.id} className="rounded-xl border border-slate-200 p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <h3 className="font-bold">{order.id}</h3>
+                    <h3 className="font-bold">{order.orderNumber}</h3>
+                    <p className="text-xs text-slate-500">Internal ID: {order.id}</p>
                     <p className="text-sm text-slate-600">
-                      {order.customerName} · {order.phone}
+                      {order.customerName} · {order.email} · {order.phone}
                     </p>
                     <p className="text-sm text-slate-600">{order.address}</p>
                     <p className="mt-1 text-sm text-slate-700">{order.itemsSummary}</p>

@@ -8,11 +8,13 @@ export type AdminUser = {
   active: boolean
 }
 
-export type OrderStatus = 'New' | 'Packed' | 'Out for delivery' | 'Delivered'
+export type OrderStatus = 'New' | 'Paid' | 'Packed' | 'Out for delivery' | 'Delivered' | 'Cancelled'
 
 export type Order = {
   id: string
+  orderNumber: string
   customerName: string
+  email: string
   phone: string
   address: string
   itemsSummary: string

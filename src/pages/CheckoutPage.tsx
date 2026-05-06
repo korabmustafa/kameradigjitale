@@ -45,7 +45,7 @@ export function CheckoutPage({ cart, products, onOrderCreated }: CheckoutPagePro
         items: cartItems.map((item) => ({ productCode: item.productCode, quantity: item.quantity }))
       })
       onOrderCreated(order)
-      setMessage('Order placed successfully. Our team will contact you shortly.')
+      setMessage(`Order placed successfully. Your order number is ${order.orderNumber}. We also sent it to ${order.email}.`)
       setCustomerName('')
       setEmail('')
       setPhone('')

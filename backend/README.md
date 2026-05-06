@@ -8,6 +8,8 @@ Production-style backend aligned with the frontend catalog, checkout, and admin 
 - Catalog product listing and detail
 - Navigation menu from DB
 - Order creation with stock decrement in a DB transaction
+- Customer order-number lookup for order status
+- Optional SMTP order-confirmation emails
 - Admin user listing
 
 ## 2) API endpoints
@@ -17,6 +19,8 @@ Production-style backend aligned with the frontend catalog, checkout, and admin 
 - `GET /navigation/menu`
 - `GET /orders`
 - `POST /orders`
+- `POST /orders/lookup`
+- `PATCH /orders/:id/status`
 - `GET /users/admin`
 
 ## 3) Local setup (fool-proof)
@@ -41,6 +45,18 @@ Create `backend/.env`:
 ```env
 PORT=4000
 DATABASE_URL=postgresql://kd_app:change_this_password@localhost:5432/kameradigjitale?schema=public
+# Optional order-confirmation email delivery. Without SMTP_HOST, emails are logged as previews.
+SMTP_HOST=smtp.example.com
+SMTP_PORT=465
+SMTP_SECURE=true
+# Use true for providers that require STARTTLS on port 587.
+SMTP_STARTTLS=false
+SMTP_TIMEOUT_MS=10000
+SMTP_USER=your_smtp_user
+SMTP_PASS=your_smtp_password
+SMTP_FROM=orders@kameradigjitale.com
+# Used to include a direct order-status link in confirmation emails.
+FRONTEND_URL=https://kameradigjitale.com
 ```
 
 ### Step C: Install deps and initialize DB
@@ -67,7 +83,8 @@ curl http://localhost:4000/api/v1/health
 - Product details -> `GET /products/:productCode`
 - Nav menu -> `GET /navigation/menu`
 - Checkout submit -> `POST /orders`
-- Admin dashboard -> `GET /orders`, `GET /users/admin`
+- Order status lookup -> `POST /orders/lookup`
+- Admin dashboard -> `GET /orders`, `PATCH /orders/:id/status`, `GET /users/admin`
 
 ## 5) Smoke tests
 ```bash
@@ -76,7 +93,7 @@ curl 'http://localhost:4000/api/v1/products/nikon-z6-ii'
 curl 'http://localhost:4000/api/v1/navigation/menu'
 ```
 
-Create order example:
+Create order example (response includes `orderNumber`, which is sent by email when SMTP is configured):
 ```bash
 curl -X POST 'http://localhost:4000/api/v1/orders' \
   -H 'Content-Type: application/json' \
@@ -92,10 +109,21 @@ curl -X POST 'http://localhost:4000/api/v1/orders' \
   }'
 ```
 
+Look up an order by order number and checkout email:
+```bash
+curl -X POST 'http://localhost:4000/api/v1/orders/lookup' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "orderNumber": "KD-20260506-ABC123",
+    "email": "alex@example.com"
+  }'
+```
+
 ## 6) Troubleshooting
 - **Prisma client errors**: run `npm run db:generate` again.
 - **Migration fails**: verify `DATABASE_URL`, then run `npm run db:reset` (dev only).
 - **Port in use**: set `PORT=4001` in `.env`.
+- **No emails arrive**: verify `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_STARTTLS`, `SMTP_USER`, `SMTP_PASS`, and `SMTP_FROM`. If `SMTP_HOST` is omitted, the backend logs an email preview instead of sending.
 - **No menu/products**: run `npm run db:seed` again.
 
 ## 7) AWS move checklist
