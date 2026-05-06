@@ -2,18 +2,19 @@ import { FormEvent, useMemo, useState } from 'react'
 import type { AdminUser, AdminUserRole, Order, OrderStatus } from '../data/admin'
 import type { CategoryNavigationMap, NavSubcategory } from '../data/navigation'
 import type { Product, ProductCategory } from '../data/products'
+import { useNotifications } from '../features/notifications/notificationContext'
 
 type AdminPageProps = {
   products: Product[]
   users: AdminUser[]
   orders: Order[]
   categoryNavigation: CategoryNavigationMap
-  onCreateProduct: (product: Product) => void
-  onDeleteProduct: (id: string) => void
-  onCreateUser: (user: AdminUser) => void
-  onToggleUserActive: (id: string) => void
-  onDeleteUser: (id: string) => void
-  onUpdateOrderStatus: (id: string, status: OrderStatus) => void
+  onCreateProduct: (product: Product) => Promise<void> | void
+  onDeleteProduct: (id: string) => Promise<void> | void
+  onCreateUser: (user: AdminUser) => Promise<void> | void
+  onToggleUserActive: (id: string) => Promise<void> | void
+  onDeleteUser: (id: string) => Promise<void> | void
+  onUpdateOrderStatus: (id: string, status: OrderStatus) => Promise<void> | void
   isAuthenticated: boolean
   onLogin: (password: string) => Promise<void> | void
   onLogout: () => void
@@ -75,6 +76,7 @@ export function AdminPage({
   const [productError, setProductError] = useState('')
   const [loginPassword, setLoginPassword] = useState('')
   const [loginError, setLoginError] = useState('')
+  const { notifyError } = useNotifications()
 
   const availableSubcategories = useMemo(
     () => (categoryNavigation[productForm.category] ?? []).map((entry) => entry.title),
@@ -104,7 +106,9 @@ export function AdminPage({
       await onLogin(loginPassword)
       setLoginPassword('')
     } catch (error) {
-      setLoginError(error instanceof Error ? error.message : 'Unable to log in')
+      const message = error instanceof Error ? error.message : 'Unable to log in'
+      setLoginError(message)
+      notifyError(message, { title: 'Login error' })
     }
   }
 
@@ -116,22 +120,28 @@ export function AdminPage({
     [orders],
   )
 
-  const handleProductSubmit = (event: FormEvent) => {
+  const handleProductSubmit = async (event: FormEvent) => {
     event.preventDefault()
     setProductError('')
 
     if (!productForm.productCode || !productForm.name || !productForm.image) {
-      setProductError('Please fill all required fields: product code, name, and main image URL.')
+      const message = 'Please fill all required fields: product code, name, and main image URL.'
+      setProductError(message)
+      notifyError(message, { title: 'Product validation error' })
       return
     }
 
     if (!isValidProductCode(productForm.productCode)) {
-      setProductError('Product code must be slug format: lowercase letters/numbers and dashes only (e.g. nikon-z6).')
+      const message = 'Product code must be slug format: lowercase letters/numbers and dashes only (e.g. nikon-z6).'
+      setProductError(message)
+      notifyError(message, { title: 'Product validation error' })
       return
     }
 
     if (!isSafeUrl(productForm.image)) {
-      setProductError('Main image must be a valid http(s) URL.')
+      const message = 'Main image must be a valid http(s) URL.'
+      setProductError(message)
+      notifyError(message, { title: 'Product validation error' })
       return
     }
 
@@ -141,7 +151,9 @@ export function AdminPage({
       .filter(Boolean)
 
     if (gallery.some((url) => !isSafeUrl(url))) {
-      setProductError('Each gallery URL must be a valid http(s) URL.')
+      const message = 'Each gallery URL must be a valid http(s) URL.'
+      setProductError(message)
+      notifyError(message, { title: 'Product validation error' })
       return
     }
 
@@ -155,41 +167,53 @@ export function AdminPage({
     const hasInvalidSpec = specs.some((spec) => !spec.label || !spec.value)
 
     if (hasInvalidSpec) {
-      setProductError('Each spec needs both a label and a value, or leave both fields empty.')
+      const message = 'Each spec needs both a label and a value, or leave both fields empty.'
+      setProductError(message)
+      notifyError(message, { title: 'Product validation error' })
       return
     }
 
-    onCreateProduct({
-      ...productForm,
-      subcategory: productForm.subcategory?.trim() || undefined,
-      gallery,
-      specs,
-    })
+    try {
+      await onCreateProduct({
+        ...productForm,
+        subcategory: productForm.subcategory?.trim() || undefined,
+        gallery,
+        specs,
+      })
+    } catch {
+      return
+    }
 
     setProductForm(emptyProduct)
     setGalleryInput('')
     setSpecRows([{ label: '', value: '' }])
   }
 
-  const handleNavigationSubmit = (event: FormEvent) => {
+  const handleNavigationSubmit = async (event: FormEvent) => {
     event.preventDefault()
     setNavigationError('')
 
     const title = navigationForm.title.trim()
     if (!title || !navigationForm.image.trim()) {
-      setNavigationError('Please provide both subcategory title and image URL.')
+      const message = 'Please provide both subcategory title and image URL.'
+      setNavigationError(message)
+      notifyError(message, { title: 'Navigation validation error' })
       return
     }
 
     if (!isSafeUrl(navigationForm.image)) {
-      setNavigationError('Subcategory image must be a valid http(s) URL.')
+      const message = 'Subcategory image must be a valid http(s) URL.'
+      setNavigationError(message)
+      notifyError(message, { title: 'Navigation validation error' })
       return
     }
 
     const currentEntries = categoryNavigation[navigationForm.category] ?? []
     const alreadyExists = currentEntries.some((entry) => entry.title.toLowerCase() === title.toLowerCase())
     if (alreadyExists) {
-      setNavigationError('This subcategory already exists for the selected top-level category.')
+      const message = 'This subcategory already exists for the selected top-level category.'
+      setNavigationError(message)
+      notifyError(message, { title: 'Navigation validation error' })
       return
     }
 
@@ -199,15 +223,19 @@ export function AdminPage({
       image: navigationForm.image.trim(),
     }
 
-    onUpdateCategoryNavigation({
-      ...categoryNavigation,
-      [navigationForm.category]: [...currentEntries, next],
-    })
+    try {
+      await onUpdateCategoryNavigation({
+        ...categoryNavigation,
+        [navigationForm.category]: [...currentEntries, next],
+      })
+    } catch {
+      return
+    }
 
     setNavigationForm((state) => ({ ...state, title: '', image: '' }))
   }
 
-  const handleDeleteNavigationItem = (category: ProductCategory, itemId: string) => {
+  const handleDeleteNavigationItem = async (category: ProductCategory, itemId: string) => {
     const currentEntries = categoryNavigation[category] ?? []
     const filtered = currentEntries.filter((entry) => entry.id !== itemId)
 
@@ -218,15 +246,24 @@ export function AdminPage({
       next[category] = filtered
     }
 
-    onUpdateCategoryNavigation(next)
-  }
-
-  const handleUserSubmit = (event: FormEvent) => {
-    event.preventDefault()
-    if (!userForm.name || !userForm.email) {
+    try {
+      await onUpdateCategoryNavigation(next)
+    } catch {
       return
     }
-    onCreateUser({ ...userForm, id: userForm.id || `tmp-${Date.now()}` })
+  }
+
+  const handleUserSubmit = async (event: FormEvent) => {
+    event.preventDefault()
+    if (!userForm.name || !userForm.email) {
+      notifyError('Please provide both the user name and email address.', { title: 'User validation error' })
+      return
+    }
+    try {
+      await onCreateUser({ ...userForm, id: userForm.id || `tmp-${Date.now()}` })
+    } catch {
+      return
+    }
     setUserForm({ id: '', name: '', email: '', role: 'editor', active: true })
   }
 

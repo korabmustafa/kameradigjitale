@@ -2,6 +2,7 @@ import { FormEvent, useMemo, useState } from 'react'
 import { api } from '../lib/api'
 import type { Order } from '../data/admin'
 import type { Product } from '../data/products'
+import { useNotifications } from '../features/notifications/notificationContext'
 
 type CheckoutPageProps = {
   cart: Record<string, number>
@@ -16,6 +17,7 @@ export function CheckoutPage({ cart, products, onOrderCreated }: CheckoutPagePro
   const [address, setAddress] = useState('')
   const [message, setMessage] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const { notifyError } = useNotifications()
 
   const cartItems = useMemo(
     () =>
@@ -31,7 +33,9 @@ export function CheckoutPage({ cart, products, onOrderCreated }: CheckoutPagePro
     event.preventDefault()
     setMessage('')
     if (!customerName || !email || !phone || !address || cartItems.length === 0) {
-      setMessage('Please complete all fields and keep at least one product in your cart.')
+      const validationMessage = 'Please complete all fields and keep at least one product in your cart.'
+      setMessage(validationMessage)
+      notifyError(validationMessage, { title: 'Checkout validation error' })
       return
     }
 
@@ -51,7 +55,9 @@ export function CheckoutPage({ cart, products, onOrderCreated }: CheckoutPagePro
       setPhone('')
       setAddress('')
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Could not place order at this time.')
+      const errorMessage = error instanceof Error ? error.message : 'Could not place order at this time.'
+      setMessage(errorMessage)
+      notifyError(errorMessage, { title: 'Checkout error' })
     } finally {
       setSubmitting(false)
     }

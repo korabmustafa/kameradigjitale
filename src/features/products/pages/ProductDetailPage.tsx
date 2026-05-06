@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import type { Product } from '../../../data/products'
 import { api } from '../../../lib/api'
+import { useNotifications } from '../../notifications/notificationContext'
 
 type ProductDetailPageProps = {
   products: Product[]
@@ -18,6 +19,7 @@ export function ProductDetailPage({ products, onAddToCart }: ProductDetailPagePr
   const [activeImage, setActiveImage] = useState(0)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+  const { notifyError } = useNotifications()
 
   useEffect(() => {
     if (!productCode) return
@@ -36,8 +38,10 @@ export function ProductDetailPage({ products, onAddToCart }: ProductDetailPagePr
       })
       .catch((requestError) => {
         if (!ignore) {
+          const message = requestError instanceof Error ? requestError.message : 'Unable to load product'
           setProduct(fallbackProduct)
-          setError(requestError instanceof Error ? requestError.message : 'Unable to load product')
+          setError(message)
+          notifyError(message, { title: 'Product detail error' })
         }
       })
       .finally(() => {
@@ -49,7 +53,7 @@ export function ProductDetailPage({ products, onAddToCart }: ProductDetailPagePr
     return () => {
       ignore = true
     }
-  }, [fallbackProduct, productCode])
+  }, [fallbackProduct, notifyError, productCode])
 
   if (!product) {
     return (
