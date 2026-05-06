@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
-import { seedOrders, seedUsers, type AdminUser, type Order, type OrderStatus } from './data/admin'
+import { type AdminUser, type Order, type OrderStatus } from './data/admin'
 import { type CategoryNavigationMap, type MenuItem } from './data/navigation'
-import { seedProducts, type Product } from './data/products'
+import { type Product } from './data/products'
 import { api } from './lib/api'
 import { CartDrawer } from './features/cart/components/CartDrawer'
 import { Footer } from './features/layout/components/Footer'
@@ -67,10 +67,10 @@ const dedupeCategoryNavigation = (input: CategoryNavigationMap) => {
 
 
 export function App() {
-  const [products, setProducts] = useState<Product[]>(seedProducts)
+  const [products, setProducts] = useState<Product[]>([])
   const [menuItems, setMenuItems] = useState<MenuItem[]>([])
-  const [users, setUsers] = useState<AdminUser[]>(seedUsers)
-  const [orders, setOrders] = useState<Order[]>(seedOrders)
+  const [users, setUsers] = useState<AdminUser[]>([])
+  const [orders, setOrders] = useState<Order[]>([])
   const [cart, setCart] = useState<Record<string, number>>({})
   const [cartDrawerOpen, setCartDrawerOpen] = useState(false)
   const [categoryNavigation, setCategoryNavigation] = useState<CategoryNavigationMap>({})

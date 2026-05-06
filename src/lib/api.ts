@@ -66,6 +66,14 @@ const orderStatusMap: Record<string, OrderStatus> = {
 
 const roleMap: Record<string, AdminUser['role']> = { ADMIN: 'admin', EDITOR: 'editor', SUPPORT: 'support' }
 
+type ApiOrder = Omit<Order, 'status'> & { status: string }
+
+type ApiAdminUser = Omit<AdminUser, 'role'> & { role: string }
+
+const toOrder = (order: ApiOrder): Order => ({ ...order, status: orderStatusMap[order.status] ?? 'New' })
+
+const toAdminUser = (user: ApiAdminUser): AdminUser => ({ ...user, role: roleMap[user.role] ?? 'support' })
+
 export const api = {
   async getProducts(params?: { category?: string; q?: string; page?: number; limit?: number }) {
     const query = new URLSearchParams()
@@ -96,13 +104,13 @@ export const api = {
   },
 
   async getOrders() {
-    const orders = await request<any[]>('/orders')
-    return orders.map((order) => ({ ...order, status: orderStatusMap[order.status] ?? 'New' })) as Order[]
+    const orders = await request<ApiOrder[]>('/orders')
+    return orders.map(toOrder)
   },
 
   async getAdminUsers() {
-    const users = await request<any[]>('/users/admin')
-    return users.map((user) => ({ ...user, role: roleMap[user.role] ?? 'support' })) as AdminUser[]
+    const users = await request<ApiAdminUser[]>('/users/admin')
+    return users.map(toAdminUser)
   },
 
 
@@ -124,10 +132,10 @@ export const api = {
   deleteProduct: (id: string) => request<{ success: boolean }>(`/products/${id}`, { method: 'DELETE' }),
 
   createAdminUser: (payload: { name: string; email: string; role: 'ADMIN' | 'EDITOR' | 'SUPPORT' }) =>
-    request<any>('/users/admin', { method: 'POST', body: JSON.stringify(payload) }).then((user) => ({ ...user, role: roleMap[user.role] ?? 'support' }) as AdminUser),
+    request<ApiAdminUser>('/users/admin', { method: 'POST', body: JSON.stringify(payload) }).then(toAdminUser),
 
   toggleAdminUser: (id: string) =>
-    request<any>(`/users/admin/${id}/toggle-active`, { method: 'PATCH' }).then((user) => ({ ...user, role: roleMap[user.role] ?? 'support' }) as AdminUser),
+    request<ApiAdminUser>(`/users/admin/${id}/toggle-active`, { method: 'PATCH' }).then(toAdminUser),
 
   deleteAdminUser: (id: string) => request(`/users/admin/${id}`, { method: 'DELETE' }),
   createNavigationSubcategory: (payload: { category: Product['category']; title: string; image: string; slug: string }) =>
@@ -138,7 +146,7 @@ export const api = {
   deleteNavigationSubcategory: (id: string) => request(`/navigation/subcategories/${id}`, { method: 'DELETE' }),
 
   updateOrderStatus: (id: string, status: 'NEW' | 'PAID' | 'PACKED' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED') =>
-    request<any>(`/orders/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }).then((order) => ({ ...order, status: orderStatusMap[order.status] ?? 'New' }) as Order),
+    request<ApiOrder>(`/orders/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }).then(toOrder),
 
   createOrder: (payload: {
     customerName: string
@@ -146,5 +154,5 @@ export const api = {
     phone: string
     address: string
     items: Array<{ productCode: string; quantity: number }>
-  }) => request<Order>('/orders', { method: 'POST', body: JSON.stringify(payload) })
+  }) => request<ApiOrder>('/orders', { method: 'POST', body: JSON.stringify(payload) }).then(toOrder)
 }
