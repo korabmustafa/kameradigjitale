@@ -1,14 +1,16 @@
-import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { LookupOrderDto } from './dto/lookup-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { OrdersService } from './orders.service';
+import { AdminAuthGuard } from '../common/admin-auth.guard';
 
 @Controller('orders')
 export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 
   @Get()
+  @UseGuards(AdminAuthGuard)
   list() {
     return this.ordersService.list();
   }
@@ -24,6 +26,7 @@ export class OrdersController {
   }
 
   @Patch(':id/status')
+  @UseGuards(AdminAuthGuard)
   updateStatus(@Param('id') id: string, @Body() payload: UpdateOrderStatusDto) {
     return this.ordersService.updateStatus(id, payload.status);
   }

@@ -1,5 +1,6 @@
 import {
   IsArray,
+  ValidateNested,
   IsBoolean,
   IsInt,
   IsNotEmpty,
@@ -8,6 +9,17 @@ import {
   IsString,
   Min
 } from 'class-validator';
+import { Type } from 'class-transformer';
+
+class ProductSpecDto {
+  @IsString()
+  @IsNotEmpty()
+  label!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  value!: string;
+}
 
 export class CreateProductDto {
   @IsString()
@@ -50,4 +62,10 @@ export class CreateProductDto {
   @IsArray()
   @IsString({ each: true })
   gallery?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ProductSpecDto)
+  specs?: ProductSpecDto[];
 }

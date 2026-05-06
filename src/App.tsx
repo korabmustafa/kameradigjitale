@@ -20,28 +20,36 @@ const staticContent = {
   '/brands': {
     title: 'Brands',
     description: 'Curated camera brands for local creators and collectors.',
-    bullets: ['Canon, Nikon, Sony, Fujifilm, Leica', 'Trusted used gear with inspected condition', 'Fresh stock updates coming from backend API soon']
+    bullets: [
+      'Canon, Nikon, Sony, Fujifilm, Leica',
+      'Trusted used gear with inspected condition',
+      'Fresh stock updates coming from backend API soon',
+    ],
   },
   '/condition': {
     title: 'Condition Guide',
     description: 'We keep condition labels clear so buying used gear feels safe and simple.',
-    bullets: ['Mint: almost no signs of use', 'Excellent: light signs of use, fully working', 'Good: visible wear, tested and reliable']
+    bullets: [
+      'Mint: almost no signs of use',
+      'Excellent: light signs of use, fully working',
+      'Good: visible wear, tested and reliable',
+    ],
   },
   '/valoi': {
     title: 'VALOI',
     description: 'A dedicated area for film scanning and analog workflow essentials.',
-    bullets: ['Film holder systems', 'Scanning accessories', 'Workflow guides for beginners']
+    bullets: ['Film holder systems', 'Scanning accessories', 'Workflow guides for beginners'],
   },
   '/new': {
     title: 'New Arrivals',
     description: 'Just landed: latest cameras and accessories in store.',
-    bullets: ['Updated frequently', 'Mixed film + digital drops', 'Great picks for first-time buyers']
+    bullets: ['Updated frequently', 'Mixed film + digital drops', 'Great picks for first-time buyers'],
   },
   '/sell': {
     title: 'Sell Your Gear',
     description: 'Want to sell your camera gear? Start here and our team will contact you.',
-    bullets: ['Share gear details and condition', 'Quick valuation process', 'Local meetup / pickup options']
-  }
+    bullets: ['Share gear details and condition', 'Quick valuation process', 'Local meetup / pickup options'],
+  },
 } as const
 
 const dedupeCategoryNavigation = (input: CategoryNavigationMap) => {
@@ -66,7 +74,6 @@ const dedupeCategoryNavigation = (input: CategoryNavigationMap) => {
   return result
 }
 
-
 export function App() {
   const [products, setProducts] = useState<Product[]>([])
   const [menuItems, setMenuItems] = useState<MenuItem[]>([])
@@ -76,26 +83,22 @@ export function App() {
   const [cartDrawerOpen, setCartDrawerOpen] = useState(false)
   const [categoryNavigation, setCategoryNavigation] = useState<CategoryNavigationMap>({})
   const [apiError, setApiError] = useState('')
+  const [adminToken, setAdminToken] = useState(() => sessionStorage.getItem('adminToken') ?? '')
 
   const cartCount = useMemo(() => Object.values(cart).reduce((sum, qty) => sum + qty, 0), [cart])
-
 
   useEffect(() => {
     const loadInitialData = async () => {
       try {
-        const [productsResponse, navigationResponse, subcategoriesResponse, ordersResponse, usersResponse] = await Promise.all([
+        const [productsResponse, navigationResponse, subcategoriesResponse] = await Promise.all([
           api.getProducts({ page: 1, limit: 120 }),
           api.getNavigationMenu(),
           api.getNavigationSubcategories(),
-          api.getOrders(),
-          api.getAdminUsers()
         ])
 
         setProducts(productsResponse.items)
         setMenuItems(navigationResponse)
         setCategoryNavigation(dedupeCategoryNavigation(subcategoriesResponse))
-        setOrders(ordersResponse)
-        setUsers(usersResponse)
       } catch (error) {
         setApiError(error instanceof Error ? error.message : 'Unable to load backend data')
       }
@@ -109,40 +112,88 @@ export function App() {
     setCartDrawerOpen(true)
   }
 
+  const handleAdminLogin = async (password: string) => {
+    const { token } = await api.adminLogin(password)
+    sessionStorage.setItem('adminToken', token)
+    setAdminToken(token)
+
+    const [ordersResponse, usersResponse] = await Promise.all([api.getOrders(token), api.getAdminUsers(token)])
+    setOrders(ordersResponse)
+    setUsers(usersResponse)
+  }
+
+  const handleAdminLogout = () => {
+    sessionStorage.removeItem('adminToken')
+    setAdminToken('')
+    setOrders([])
+    setUsers([])
+  }
+
+  useEffect(() => {
+    if (!adminToken) return
+
+    const loadAdminData = async () => {
+      try {
+        const [ordersResponse, usersResponse] = await Promise.all([
+          api.getOrders(adminToken),
+          api.getAdminUsers(adminToken),
+        ])
+        setOrders(ordersResponse)
+        setUsers(usersResponse)
+      } catch (error) {
+        handleAdminLogout()
+        setApiError(error instanceof Error ? error.message : 'Unable to load admin data')
+      }
+    }
+
+    void loadAdminData()
+  }, [adminToken])
+
   const handleCreateProduct = async (product: Product) => {
-    const created = await api.createProduct({
-      id: product.id || undefined,
-      productCode: product.productCode,
-      name: product.name,
-      category: product.category,
-      price: product.price,
-      stock: product.stock,
-      image: product.image,
-      description: product.description,
-      subcategory: product.subcategory,
-      featured: product.featured,
-      gallery: product.gallery
-    })
+    const created = await api.createProduct(
+      {
+        id: product.id || undefined,
+        productCode: product.productCode,
+        name: product.name,
+        category: product.category,
+        price: product.price,
+        stock: product.stock,
+        image: product.image,
+        description: product.description,
+        subcategory: product.subcategory,
+        featured: product.featured,
+        gallery: product.gallery,
+        specs: product.specs,
+      },
+      adminToken,
+    )
     setProducts((state) => [created, ...state.filter((item) => item.id !== created.id)])
   }
 
   const handleDeleteProduct = async (id: string) => {
-    await api.deleteProduct(id)
+    await api.deleteProduct(id, adminToken)
     setProducts((state) => state.filter((product) => product.id !== id))
   }
 
   const handleCreateUser = async (user: AdminUser) => {
-    const created = await api.createAdminUser({ name: user.name, email: user.email, role: user.role.toUpperCase() as 'ADMIN' | 'EDITOR' | 'SUPPORT' })
+    const created = await api.createAdminUser(
+      {
+        name: user.name,
+        email: user.email,
+        role: user.role.toUpperCase() as 'ADMIN' | 'EDITOR' | 'SUPPORT',
+      },
+      adminToken,
+    )
     setUsers((state) => [created, ...state.filter((item) => item.id !== created.id)])
   }
 
   const handleToggleUserActive = async (id: string) => {
-    const updated = await api.toggleAdminUser(id)
+    const updated = await api.toggleAdminUser(id, adminToken)
     setUsers((state) => state.map((user) => (user.id === id ? updated : user)))
   }
 
   const handleDeleteUser = async (id: string) => {
-    await api.deleteAdminUser(id)
+    await api.deleteAdminUser(id, adminToken)
     setUsers((state) => state.filter((user) => user.id !== id))
   }
 
@@ -153,9 +204,9 @@ export function App() {
       Packed: 'PACKED',
       'Out for delivery': 'SHIPPED',
       Delivered: 'DELIVERED',
-      Cancelled: 'CANCELLED'
+      Cancelled: 'CANCELLED',
     }
-    const updated = await api.updateOrderStatus(id, statusMap[status])
+    const updated = await api.updateOrderStatus(id, statusMap[status], adminToken)
     setOrders((state) => state.map((order) => (order.id === id ? updated : order)))
   }
 
@@ -168,8 +219,19 @@ export function App() {
       const currentItems = current[typedCategory] ?? []
       for (const item of nextItems ?? []) {
         if (!currentItems.some((existing) => existing.id === item.id)) {
-          const slug = item.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
-          await api.createNavigationSubcategory({ category: typedCategory, title: item.title, image: item.image, slug })
+          const slug = item.title
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/(^-|-$)/g, '')
+          await api.createNavigationSubcategory(
+            {
+              category: typedCategory,
+              title: item.title,
+              image: item.image,
+              slug,
+            },
+            adminToken,
+          )
         }
       }
     }
@@ -179,7 +241,7 @@ export function App() {
       const nextItems = next[typedCategory] ?? []
       for (const item of currentItems ?? []) {
         if (!nextItems.some((existing) => existing.id === item.id)) {
-          await api.deleteNavigationSubcategory(item.id)
+          await api.deleteNavigationSubcategory(item.id, adminToken)
         }
       }
     }
@@ -190,7 +252,12 @@ export function App() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <NavBar cartCount={cartCount} categoryNavigation={categoryNavigation} menuItems={menuItems} />
+      <NavBar
+        cartCount={cartCount}
+        categoryNavigation={categoryNavigation}
+        menuItems={menuItems}
+        showAdminLink={Boolean(adminToken)}
+      />
       <div className="flex-1">
         <Routes>
           <Route path="/" element={<HomePage products={products} onAddToCart={handleAddToCart} />} />
@@ -221,8 +288,20 @@ export function App() {
                 }
               />
             ))}
-          <Route path="/products/:productCode" element={<ProductDetailPage products={products} onAddToCart={handleAddToCart} />} />
-          <Route path="/checkout" element={<CheckoutPage cart={cart} products={products} onOrderCreated={(order) => setOrders((state) => [order, ...state])} />} />
+          <Route
+            path="/products/:productCode"
+            element={<ProductDetailPage products={products} onAddToCart={handleAddToCart} />}
+          />
+          <Route
+            path="/checkout"
+            element={
+              <CheckoutPage
+                cart={cart}
+                products={products}
+                onOrderCreated={(order) => setOrders((state) => [order, ...state])}
+              />
+            }
+          />
           <Route path="/order-lookup" element={<OrderLookupPage />} />
           <Route
             path="/admin"
@@ -238,6 +317,9 @@ export function App() {
                 onToggleUserActive={handleToggleUserActive}
                 onDeleteUser={handleDeleteUser}
                 onUpdateOrderStatus={handleUpdateOrderStatus}
+                isAuthenticated={Boolean(adminToken)}
+                onLogin={handleAdminLogin}
+                onLogout={handleAdminLogout}
                 onUpdateCategoryNavigation={handleUpdateCategoryNavigation}
               />
             }
@@ -252,7 +334,11 @@ export function App() {
           ))}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-        {apiError ? <p className="mx-auto mt-2 max-w-7xl rounded-xl bg-amber-50 px-4 py-2 text-sm text-amber-700">Backend sync warning: {apiError}</p> : null}
+        {apiError ? (
+          <p className="mx-auto mt-2 max-w-7xl rounded-xl bg-amber-50 px-4 py-2 text-sm text-amber-700">
+            Backend sync warning: {apiError}
+          </p>
+        ) : null}
       </div>
       <Footer />
       <CartDrawer open={cartDrawerOpen} cart={cart} products={products} onClose={() => setCartDrawerOpen(false)} />

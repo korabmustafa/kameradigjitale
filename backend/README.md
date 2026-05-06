@@ -10,18 +10,19 @@ Production-style backend aligned with the frontend catalog, checkout, and admin 
 - Order creation with stock decrement in a DB transaction
 - Customer order-number lookup for order status
 - Optional SMTP order-confirmation emails
-- Admin user listing
+- Password-protected admin endpoints for product, navigation, order, and user management
 
 ## 2) API endpoints
 - `GET /health`
 - `GET /products?category=&q=&page=&limit=`
 - `GET /products/:productCode`
 - `GET /navigation/menu`
-- `GET /orders`
+- `POST /auth/admin-login`
+- `GET /orders` (admin bearer token required)
 - `POST /orders`
 - `POST /orders/lookup`
-- `PATCH /orders/:id/status`
-- `GET /users/admin`
+- `PATCH /orders/:id/status` (admin bearer token required)
+- `GET /users/admin` (admin bearer token required)
 
 ## 3) Local setup (fool-proof)
 ### Prerequisites
@@ -57,6 +58,9 @@ SMTP_PASS=your_smtp_password
 SMTP_FROM=orders@kameradigjitale.com
 # Used to include a direct order-status link in confirmation emails.
 FRONTEND_URL=https://kameradigjitale.com
+# Admin dashboard authentication. Use a long random token in production.
+ADMIN_PASSWORD=change_this_admin_password
+ADMIN_AUTH_TOKEN=replace_with_a_long_random_token
 ```
 
 ### Step C: Install deps and initialize DB
@@ -84,7 +88,16 @@ curl http://localhost:4000/api/v1/health
 - Nav menu -> `GET /navigation/menu`
 - Checkout submit -> `POST /orders`
 - Order status lookup -> `POST /orders/lookup`
-- Admin dashboard -> `GET /orders`, `PATCH /orders/:id/status`, `GET /users/admin`
+- Admin dashboard -> `POST /auth/admin-login`, then bearer-authenticated `GET /orders`, `PATCH /orders/:id/status`, `GET /users/admin`, product mutations, and navigation mutations
+
+### Admin smoke test
+```bash
+ADMIN_TOKEN=$(curl -s -X POST 'http://localhost:4000/api/v1/auth/admin-login' \
+  -H 'Content-Type: application/json' \
+  -d '{"password":"change_this_admin_password"}' | node -pe "JSON.parse(require('fs').readFileSync(0, 'utf8')).token")
+
+curl 'http://localhost:4000/api/v1/orders' -H "Authorization: Bearer $ADMIN_TOKEN"
+```
 
 ## 5) Smoke tests
 ```bash
@@ -130,4 +143,5 @@ curl -X POST 'http://localhost:4000/api/v1/orders/lookup' \
 - Use `npm run db:deploy` in CI/CD for production migrations.
 - Store `DATABASE_URL` in AWS Secrets Manager or SSM, not in code.
 - Put NestJS behind an ALB/API Gateway and enable HTTPS only.
-- Add JWT auth + RBAC for admin routes before public launch.
+- Rotate `ADMIN_PASSWORD` and `ADMIN_AUTH_TOKEN` for production; use long random values stored in AWS Secrets Manager or SSM.
+- Consider replacing the lightweight admin token with JWT sessions + RBAC if multiple admin roles need different permissions.

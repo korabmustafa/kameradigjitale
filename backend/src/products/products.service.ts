@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException
-} from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { ProductCategory } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -74,7 +70,8 @@ export class ProductsService {
       this.prisma.product.findMany({
         where,
         include: {
-          gallery: true
+          gallery: true,
+          specs: { orderBy: { position: 'asc' as const } }
         },
         skip: (query.page - 1) * query.limit,
         take: query.limit,
@@ -100,7 +97,8 @@ export class ProductsService {
         productCode
       },
       include: {
-        gallery: true
+        gallery: true,
+        specs: { orderBy: { position: 'asc' as const } }
       }
     });
 
@@ -118,7 +116,7 @@ export class ProductsService {
       throw new BadRequestException('Invalid product category');
     }
 
-    const { gallery } = payload;
+    const { gallery, specs } = payload;
     const productData = {
       productCode: payload.productCode,
       name: payload.name,
@@ -142,10 +140,22 @@ export class ProductsService {
                 }))
               }
             }
+          : undefined,
+        specs: specs?.length
+          ? {
+              createMany: {
+                data: specs.map((spec, position) => ({
+                  label: spec.label,
+                  value: spec.value,
+                  position
+                }))
+              }
+            }
           : undefined
       },
       include: {
-        gallery: true
+        gallery: true,
+        specs: { orderBy: { position: 'asc' as const } }
       }
     });
   }

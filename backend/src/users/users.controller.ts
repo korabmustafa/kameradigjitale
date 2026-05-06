@@ -1,9 +1,11 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateAdminUserDto } from './dto/create-admin-user.dto';
+import { AdminAuthGuard } from '../common/admin-auth.guard';
 
 @Controller('users')
+@UseGuards(AdminAuthGuard)
 export class UsersController {
   constructor(private readonly prisma: PrismaService) {}
 
@@ -14,13 +16,20 @@ export class UsersController {
 
   @Post('admin')
   createAdmin(@Body() payload: CreateAdminUserDto) {
-    return this.prisma.adminUser.create({ data: { ...payload, role: payload.role as UserRole } });
+    return this.prisma.adminUser.create({
+      data: { ...payload, role: payload.role as UserRole }
+    });
   }
 
   @Patch('admin/:id/toggle-active')
   async toggleActive(@Param('id') id: string) {
-    const user = await this.prisma.adminUser.findUniqueOrThrow({ where: { id } });
-    return this.prisma.adminUser.update({ where: { id }, data: { active: !user.active } });
+    const user = await this.prisma.adminUser.findUniqueOrThrow({
+      where: { id }
+    });
+    return this.prisma.adminUser.update({
+      where: { id },
+      data: { active: !user.active }
+    });
   }
 
   @Delete('admin/:id')

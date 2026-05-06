@@ -14,6 +14,9 @@ type AdminPageProps = {
   onToggleUserActive: (id: string) => void
   onDeleteUser: (id: string) => void
   onUpdateOrderStatus: (id: string, status: OrderStatus) => void
+  isAuthenticated: boolean
+  onLogin: (password: string) => Promise<void> | void
+  onLogout: () => void
   onUpdateCategoryNavigation: (nextNavigation: CategoryNavigationMap) => Promise<void> | void
 }
 
@@ -32,7 +35,7 @@ const emptyProduct: Product = {
   gallery: [],
   description: '',
   specs: [],
-  subcategory: ''
+  subcategory: '',
 }
 
 const isSafeUrl = (value: string) => {
@@ -60,19 +63,27 @@ export function AdminPage({
   onToggleUserActive,
   onDeleteUser,
   onUpdateOrderStatus,
-  onUpdateCategoryNavigation
+  isAuthenticated,
+  onLogin,
+  onLogout,
+  onUpdateCategoryNavigation,
 }: AdminPageProps) {
   const [activeTab, setActiveTab] = useState<'products' | 'users' | 'orders'>('products')
   const [productForm, setProductForm] = useState<Product>(emptyProduct)
   const [galleryInput, setGalleryInput] = useState('')
   const [specsInput, setSpecsInput] = useState('')
   const [productError, setProductError] = useState('')
+  const [loginPassword, setLoginPassword] = useState('')
+  const [loginError, setLoginError] = useState('')
 
-  const availableSubcategories = useMemo(() => (categoryNavigation[productForm.category] ?? []).map((entry) => entry.title), [categoryNavigation, productForm.category])
+  const availableSubcategories = useMemo(
+    () => (categoryNavigation[productForm.category] ?? []).map((entry) => entry.title),
+    [categoryNavigation, productForm.category],
+  )
   const [navigationForm, setNavigationForm] = useState({
     category: 'Digital Cameras' as ProductCategory,
     title: '',
-    image: ''
+    image: '',
   })
   const [navigationError, setNavigationError] = useState('')
   const [userForm, setUserForm] = useState<AdminUser>({
@@ -80,15 +91,27 @@ export function AdminPage({
     name: '',
     email: '',
     role: 'editor',
-    active: true
+    active: true,
   })
+
+  const handleLoginSubmit = async (event: FormEvent) => {
+    event.preventDefault()
+    setLoginError('')
+
+    try {
+      await onLogin(loginPassword)
+      setLoginPassword('')
+    } catch (error) {
+      setLoginError(error instanceof Error ? error.message : 'Unable to log in')
+    }
+  }
 
   const orderTotals = useMemo(
     () => ({
       totalOrders: orders.length,
-      pendingOrders: orders.filter((order) => order.status !== 'Delivered').length
+      pendingOrders: orders.filter((order) => order.status !== 'Delivered').length,
     }),
-    [orders]
+    [orders],
   )
 
   const handleProductSubmit = (event: FormEvent) => {
@@ -126,7 +149,10 @@ export function AdminPage({
       .filter(Boolean)
       .map((line) => {
         const [label, ...valueParts] = line.split(':')
-        return { label: label?.trim() ?? '', value: valueParts.join(':').trim() }
+        return {
+          label: label?.trim() ?? '',
+          value: valueParts.join(':').trim(),
+        }
       })
 
     const hasInvalidSpec = specs.some((spec) => !spec.label || !spec.value)
@@ -140,7 +166,7 @@ export function AdminPage({
       ...productForm,
       subcategory: productForm.subcategory?.trim() || undefined,
       gallery,
-      specs
+      specs,
     })
     setProductForm(emptyProduct)
     setGalleryInput('')
@@ -172,12 +198,12 @@ export function AdminPage({
     const next: NavSubcategory = {
       id: toId(navigationForm.category, title),
       title,
-      image: navigationForm.image.trim()
+      image: navigationForm.image.trim(),
     }
 
     onUpdateCategoryNavigation({
       ...categoryNavigation,
-      [navigationForm.category]: [...currentEntries, next]
+      [navigationForm.category]: [...currentEntries, next],
     })
 
     setNavigationForm((state) => ({ ...state, title: '', image: '' }))
@@ -206,11 +232,49 @@ export function AdminPage({
     setUserForm({ id: '', name: '', email: '', role: 'editor', active: true })
   }
 
+  if (!isAuthenticated) {
+    return (
+      <main className="mx-auto flex max-w-xl flex-1 items-center px-6 py-12">
+        <section className="w-full rounded-2xl bg-white p-6 shadow-playful">
+          <p className="text-sm font-bold uppercase tracking-wide text-emerald-600">Admin only</p>
+          <h1 className="mt-2 text-3xl font-black text-slate-900">Log in to continue</h1>
+          <p className="mt-2 text-sm text-slate-600">
+            Enter the admin password to manage products, orders, users, and navigation.
+          </p>
+          <form className="mt-6 grid gap-3" onSubmit={handleLoginSubmit}>
+            <input
+              type="password"
+              value={loginPassword}
+              onChange={(event) => setLoginPassword(event.target.value)}
+              className="rounded-lg border border-slate-200 px-3 py-2"
+              placeholder="Admin password"
+              autoComplete="current-password"
+            />
+            {loginError ? <p className="rounded-lg bg-red-50 p-2 text-sm text-red-600">{loginError}</p> : null}
+            <button className="rounded-xl bg-ink px-4 py-2 font-bold text-white">Log in</button>
+          </form>
+        </section>
+      </main>
+    )
+  }
+
   return (
     <main className="mx-auto max-w-7xl space-y-6 px-6 py-8">
       <section className="rounded-2xl bg-white p-6 shadow-playful">
-        <h1 className="text-2xl font-black">Admin Dashboard</h1>
-        <p className="mt-1 text-sm text-slate-600">Manage products, user accounts, order status, and navigation from a single panel.</p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-black">Admin Dashboard</h1>
+            <p className="mt-1 text-sm text-slate-600">
+              Manage products, user accounts, order status, and navigation from a single panel.
+            </p>
+          </div>
+          <button
+            onClick={onLogout}
+            className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-bold text-slate-700"
+          >
+            Log out
+          </button>
+        </div>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
           <button
@@ -243,20 +307,33 @@ export function AdminPage({
                 <input
                   value={productForm.productCode}
                   onChange={(event) =>
-                    setProductForm((state) => ({ ...state, productCode: event.target.value.trim().toLowerCase() }))
+                    setProductForm((state) => ({
+                      ...state,
+                      productCode: event.target.value.trim().toLowerCase(),
+                    }))
                   }
                   className="rounded-lg border border-slate-200 px-3 py-2"
                   placeholder="Product code for URL (e.g. nikon-z6)"
                 />
                 <input
                   value={productForm.name}
-                  onChange={(event) => setProductForm((state) => ({ ...state, name: event.target.value }))}
+                  onChange={(event) =>
+                    setProductForm((state) => ({
+                      ...state,
+                      name: event.target.value,
+                    }))
+                  }
                   className="rounded-lg border border-slate-200 px-3 py-2"
                   placeholder="Product name"
                 />
                 <select
                   value={productForm.category}
-                  onChange={(event) => setProductForm((state) => ({ ...state, category: event.target.value as ProductCategory }))}
+                  onChange={(event) =>
+                    setProductForm((state) => ({
+                      ...state,
+                      category: event.target.value as ProductCategory,
+                    }))
+                  }
                   className="rounded-lg border border-slate-200 px-3 py-2"
                 >
                   {categories.map((category) => (
@@ -267,11 +344,20 @@ export function AdminPage({
                   <span>Subcategory</span>
                   <select
                     value={productForm.subcategory ?? ''}
-                    onChange={(event) => setProductForm((state) => ({ ...state, subcategory: event.target.value || '' }))}
+                    onChange={(event) =>
+                      setProductForm((state) => ({
+                        ...state,
+                        subcategory: event.target.value || '',
+                      }))
+                    }
                     className="rounded-lg border border-slate-200 px-3 py-2 text-slate-900"
                     disabled={availableSubcategories.length === 0}
                   >
-                    <option value="">{availableSubcategories.length === 0 ? 'No subcategories available for this category' : 'Select subcategory'}</option>
+                    <option value="">
+                      {availableSubcategories.length === 0
+                        ? 'No subcategories available for this category'
+                        : 'Select subcategory'}
+                    </option>
                     {availableSubcategories.map((subcategory) => (
                       <option key={subcategory} value={subcategory}>
                         {subcategory}
@@ -279,31 +365,46 @@ export function AdminPage({
                     ))}
                   </select>
                 </label>
-               <label className="grid gap-1 text-sm font-semibold text-slate-700">
+                <label className="grid gap-1 text-sm font-semibold text-slate-700">
                   <span>Price</span>
-                <input
-                  type="number"
-                  value={productForm.price}
-                  onChange={(event) => setProductForm((state) => ({ ...state, price: Number(event.target.value) }))}
-                  className="rounded-lg border border-slate-200 px-3 py-2"
-                  placeholder="Price"
-                  min={0}
-                />
-               </label>
-               <label className="grid gap-1 text-sm font-semibold text-slate-700">
+                  <input
+                    type="number"
+                    value={productForm.price}
+                    onChange={(event) =>
+                      setProductForm((state) => ({
+                        ...state,
+                        price: Number(event.target.value),
+                      }))
+                    }
+                    className="rounded-lg border border-slate-200 px-3 py-2"
+                    placeholder="Price"
+                    min={0}
+                  />
+                </label>
+                <label className="grid gap-1 text-sm font-semibold text-slate-700">
                   <span>Stock</span>
-                <input
-                  type="number"
-                  value={productForm.stock}
-                  onChange={(event) => setProductForm((state) => ({ ...state, stock: Number(event.target.value) }))}
-                  className="rounded-lg border border-slate-200 px-3 py-2"
-                  placeholder="Stock"
-                  min={0}
-                />
-               </label>
+                  <input
+                    type="number"
+                    value={productForm.stock}
+                    onChange={(event) =>
+                      setProductForm((state) => ({
+                        ...state,
+                        stock: Number(event.target.value),
+                      }))
+                    }
+                    className="rounded-lg border border-slate-200 px-3 py-2"
+                    placeholder="Stock"
+                    min={0}
+                  />
+                </label>
                 <input
                   value={productForm.image}
-                  onChange={(event) => setProductForm((state) => ({ ...state, image: event.target.value }))}
+                  onChange={(event) =>
+                    setProductForm((state) => ({
+                      ...state,
+                      image: event.target.value,
+                    }))
+                  }
                   className="rounded-lg border border-slate-200 px-3 py-2"
                   placeholder="Main image URL"
                 />
@@ -323,7 +424,12 @@ export function AdminPage({
                 />
                 <textarea
                   value={productForm.description}
-                  onChange={(event) => setProductForm((state) => ({ ...state, description: event.target.value }))}
+                  onChange={(event) =>
+                    setProductForm((state) => ({
+                      ...state,
+                      description: event.target.value,
+                    }))
+                  }
                   className="rounded-lg border border-slate-200 px-3 py-2"
                   placeholder="Description"
                   rows={4}
@@ -333,7 +439,12 @@ export function AdminPage({
                   <input
                     type="checkbox"
                     checked={Boolean(productForm.featured)}
-                    onChange={(event) => setProductForm((state) => ({ ...state, featured: event.target.checked }))}
+                    onChange={(event) =>
+                      setProductForm((state) => ({
+                        ...state,
+                        featured: event.target.checked,
+                      }))
+                    }
                   />
                   Featured product
                 </label>
@@ -351,7 +462,8 @@ export function AdminPage({
                       <h3 className="font-bold">{product.name}</h3>
                       <p className="text-sm text-slate-600">
                         {product.category}
-                        {product.subcategory ? ` · ${product.subcategory}` : ''} · ${product.price} · Stock: {product.stock}
+                        {product.subcategory ? ` · ${product.subcategory}` : ''} · ${product.price} · Stock:{' '}
+                        {product.stock}
                       </p>
                       <p className="text-xs text-slate-500">/{`products/${product.productCode}`}</p>
                     </div>
@@ -377,7 +489,10 @@ export function AdminPage({
                 <select
                   value={navigationForm.category}
                   onChange={(event) =>
-                    setNavigationForm((state) => ({ ...state, category: event.target.value as ProductCategory }))
+                    setNavigationForm((state) => ({
+                      ...state,
+                      category: event.target.value as ProductCategory,
+                    }))
                   }
                   className="rounded-lg border border-slate-200 px-3 py-2"
                 >
@@ -387,17 +502,29 @@ export function AdminPage({
                 </select>
                 <input
                   value={navigationForm.title}
-                  onChange={(event) => setNavigationForm((state) => ({ ...state, title: event.target.value }))}
+                  onChange={(event) =>
+                    setNavigationForm((state) => ({
+                      ...state,
+                      title: event.target.value,
+                    }))
+                  }
                   className="rounded-lg border border-slate-200 px-3 py-2"
                   placeholder="Subcategory title"
                 />
                 <input
                   value={navigationForm.image}
-                  onChange={(event) => setNavigationForm((state) => ({ ...state, image: event.target.value }))}
+                  onChange={(event) =>
+                    setNavigationForm((state) => ({
+                      ...state,
+                      image: event.target.value,
+                    }))
+                  }
                   className="rounded-lg border border-slate-200 px-3 py-2"
                   placeholder="Subcategory image URL"
                 />
-                {navigationError ? <p className="rounded-lg bg-red-50 p-2 text-sm text-red-600">{navigationError}</p> : null}
+                {navigationError ? (
+                  <p className="rounded-lg bg-red-50 p-2 text-sm text-red-600">{navigationError}</p>
+                ) : null}
                 <button className="rounded-xl bg-ink px-4 py-2 font-bold text-white">Add Subcategory</button>
               </form>
             </article>
@@ -416,7 +543,10 @@ export function AdminPage({
                       ) : (
                         <div className="mt-2 grid gap-2 sm:grid-cols-2">
                           {items.map((item) => (
-                            <article key={item.id} className="flex items-center gap-2 rounded-lg border border-slate-200 p-2">
+                            <article
+                              key={item.id}
+                              className="flex items-center gap-2 rounded-lg border border-slate-200 p-2"
+                            >
                               <img src={item.image} alt={item.title} className="h-10 w-10 rounded-md object-cover" />
                               <p className="flex-1 text-sm font-semibold text-slate-700">{item.title}</p>
                               <button
@@ -451,20 +581,35 @@ export function AdminPage({
               />
               <input
                 value={userForm.name}
-                onChange={(event) => setUserForm((state) => ({ ...state, name: event.target.value }))}
+                onChange={(event) =>
+                  setUserForm((state) => ({
+                    ...state,
+                    name: event.target.value,
+                  }))
+                }
                 className="rounded-lg border border-slate-200 px-3 py-2"
                 placeholder="Full name"
               />
               <input
                 type="email"
                 value={userForm.email}
-                onChange={(event) => setUserForm((state) => ({ ...state, email: event.target.value }))}
+                onChange={(event) =>
+                  setUserForm((state) => ({
+                    ...state,
+                    email: event.target.value,
+                  }))
+                }
                 className="rounded-lg border border-slate-200 px-3 py-2"
                 placeholder="Email"
               />
               <select
                 value={userForm.role}
-                onChange={(event) => setUserForm((state) => ({ ...state, role: event.target.value as AdminUserRole }))}
+                onChange={(event) =>
+                  setUserForm((state) => ({
+                    ...state,
+                    role: event.target.value as AdminUserRole,
+                  }))
+                }
                 className="rounded-lg border border-slate-200 px-3 py-2"
               >
                 {roles.map((role) => (
@@ -479,7 +624,10 @@ export function AdminPage({
             <h2 className="mb-4 text-xl font-black">User Management ({users.length})</h2>
             <div className="space-y-3">
               {users.map((user) => (
-                <article key={user.id} className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 p-3">
+                <article
+                  key={user.id}
+                  className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 p-3"
+                >
                   <div className="flex-1">
                     <h3 className="font-bold">{user.name}</h3>
                     <p className="text-sm text-slate-600">
@@ -489,7 +637,9 @@ export function AdminPage({
                   <button
                     onClick={() => onToggleUserActive(user.id)}
                     className={`rounded-lg px-3 py-1 text-sm font-semibold ${
-                      user.active ? 'border border-emerald-200 text-emerald-700' : 'border border-slate-300 text-slate-600'
+                      user.active
+                        ? 'border border-emerald-200 text-emerald-700'
+                        : 'border border-slate-300 text-slate-600'
                     }`}
                   >
                     {user.active ? 'Active' : 'Inactive'}

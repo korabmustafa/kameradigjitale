@@ -1,6 +1,17 @@
-import { BadRequestException, Body, ConflictException, Controller, Delete, Get, Param, Post } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  ConflictException,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  UseGuards
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ProductCategory } from '@prisma/client';
+import { AdminAuthGuard } from '../common/admin-auth.guard';
 
 @Controller('navigation')
 export class NavigationController {
@@ -17,7 +28,10 @@ export class NavigationController {
 
   @Get('menu')
   menu() {
-    return this.prisma.menuItem.findMany({ where: { active: true }, orderBy: { position: 'asc' } });
+    return this.prisma.menuItem.findMany({
+      where: { active: true },
+      orderBy: { position: 'asc' }
+    });
   }
 
   @Get('subcategories')
@@ -37,8 +51,15 @@ export class NavigationController {
   }
 
   @Post('subcategories')
+  @UseGuards(AdminAuthGuard)
   async createSubcategory(
-    @Body() body: { category: ProductCategory; title: string; image: string; slug?: string }
+    @Body()
+    body: {
+      category: ProductCategory;
+      title: string;
+      image: string;
+      slug?: string;
+    }
   ) {
     const title = body.title?.trim();
     const image = body.image?.trim();
@@ -78,6 +99,7 @@ export class NavigationController {
   }
 
   @Delete('subcategories/:id')
+  @UseGuards(AdminAuthGuard)
   deleteSubcategory(@Param('id') id: string) {
     return this.prisma.navigationSubcategory.delete({ where: { id } });
   }
