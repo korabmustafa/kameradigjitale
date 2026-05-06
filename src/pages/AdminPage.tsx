@@ -71,7 +71,7 @@ export function AdminPage({
   const [activeTab, setActiveTab] = useState<'products' | 'users' | 'orders'>('products')
   const [productForm, setProductForm] = useState<Product>(emptyProduct)
   const [galleryInput, setGalleryInput] = useState('')
-  const [specsInput, setSpecsInput] = useState('')
+  const [specRows, setSpecRows] = useState<Array<{ label: string; value: string }>>([{ label: '', value: '' }])
   const [productError, setProductError] = useState('')
   const [loginPassword, setLoginPassword] = useState('')
   const [loginError, setLoginError] = useState('')
@@ -80,11 +80,13 @@ export function AdminPage({
     () => (categoryNavigation[productForm.category] ?? []).map((entry) => entry.title),
     [categoryNavigation, productForm.category],
   )
+
   const [navigationForm, setNavigationForm] = useState({
     category: 'Digital Cameras' as ProductCategory,
     title: '',
     image: '',
   })
+
   const [navigationError, setNavigationError] = useState('')
   const [userForm, setUserForm] = useState<AdminUser>({
     id: '',
@@ -143,22 +145,17 @@ export function AdminPage({
       return
     }
 
-    const specs = specsInput
-      .split('\n')
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .map((line) => {
-        const [label, ...valueParts] = line.split(':')
-        return {
-          label: label?.trim() ?? '',
-          value: valueParts.join(':').trim(),
-        }
-      })
+    const specs = specRows
+      .map((spec) => ({
+        label: spec.label.trim(),
+        value: spec.value.trim(),
+      }))
+      .filter((spec) => spec.label || spec.value)
 
     const hasInvalidSpec = specs.some((spec) => !spec.label || !spec.value)
 
     if (hasInvalidSpec) {
-      setProductError('Each spec line must follow format: Label: Value')
+      setProductError('Each spec needs both a label and a value, or leave both fields empty.')
       return
     }
 
@@ -168,9 +165,10 @@ export function AdminPage({
       gallery,
       specs,
     })
+
     setProductForm(emptyProduct)
     setGalleryInput('')
-    setSpecsInput('')
+    setSpecRows([{ label: '', value: '' }])
   }
 
   const handleNavigationSubmit = (event: FormEvent) => {
@@ -315,6 +313,7 @@ export function AdminPage({
                   className="rounded-lg border border-slate-200 px-3 py-2"
                   placeholder="Product code for URL (e.g. nikon-z6)"
                 />
+
                 <input
                   value={productForm.name}
                   onChange={(event) =>
@@ -326,6 +325,7 @@ export function AdminPage({
                   className="rounded-lg border border-slate-200 px-3 py-2"
                   placeholder="Product name"
                 />
+
                 <select
                   value={productForm.category}
                   onChange={(event) =>
@@ -340,6 +340,7 @@ export function AdminPage({
                     <option key={category}>{category}</option>
                   ))}
                 </select>
+
                 <label className="grid gap-1 text-sm font-semibold text-slate-700">
                   <span>Subcategory</span>
                   <select
@@ -365,6 +366,7 @@ export function AdminPage({
                     ))}
                   </select>
                 </label>
+
                 <label className="grid gap-1 text-sm font-semibold text-slate-700">
                   <span>Price</span>
                   <input
@@ -381,6 +383,7 @@ export function AdminPage({
                     min={0}
                   />
                 </label>
+
                 <label className="grid gap-1 text-sm font-semibold text-slate-700">
                   <span>Stock</span>
                   <input
@@ -397,6 +400,7 @@ export function AdminPage({
                     min={0}
                   />
                 </label>
+
                 <input
                   value={productForm.image}
                   onChange={(event) =>
@@ -408,20 +412,99 @@ export function AdminPage({
                   className="rounded-lg border border-slate-200 px-3 py-2"
                   placeholder="Main image URL"
                 />
-                <textarea
-                  value={galleryInput}
-                  onChange={(event) => setGalleryInput(event.target.value)}
-                  className="rounded-lg border border-slate-200 px-3 py-2"
-                  placeholder="Gallery image URLs separated by commas"
-                  rows={3}
-                />
-                <textarea
-                  value={specsInput}
-                  onChange={(event) => setSpecsInput(event.target.value)}
-                  className="rounded-lg border border-slate-200 px-3 py-2"
-                  placeholder="Specs format: Brand: Nikon (one per line)"
-                  rows={4}
-                />
+
+                <label className="grid gap-1 text-sm font-semibold text-slate-700">
+                  <span>Gallery images</span>
+                  <textarea
+                    value={galleryInput}
+                    onChange={(event) => setGalleryInput(event.target.value)}
+                    className="rounded-lg border border-slate-200 px-3 py-2"
+                    placeholder="Paste image URLs separated by commas"
+                    rows={3}
+                  />
+                  <span className="text-xs font-normal text-slate-500">
+                    Example: https://example.com/1.jpg, https://example.com/2.jpg
+                  </span>
+                </label>
+
+                <div className="grid gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                  <div>
+                    <p className="text-sm font-bold text-slate-800">Product specs</p>
+                    <p className="text-xs text-slate-500">
+                      Optional. Add details like brand, condition, sensor, lens mount, warranty, or included items.
+                    </p>
+                  </div>
+
+                  {specRows.map((spec, index) => (
+                    <div key={index} className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+                      <input
+                        value={spec.label}
+                        onChange={(event) =>
+                          setSpecRows((rows) =>
+                            rows.map((row, rowIndex) =>
+                              rowIndex === index ? { ...row, label: event.target.value } : row,
+                            ),
+                          )
+                        }
+                        className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                        placeholder="Label e.g. Brand"
+                      />
+
+                      <input
+                        value={spec.value}
+                        onChange={(event) =>
+                          setSpecRows((rows) =>
+                            rows.map((row, rowIndex) =>
+                              rowIndex === index ? { ...row, value: event.target.value } : row,
+                            ),
+                          )
+                        }
+                        className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                        placeholder="Value e.g. Sony"
+                      />
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setSpecRows((rows) =>
+                            rows.length === 1
+                              ? [{ label: '', value: '' }]
+                              : rows.filter((_, rowIndex) => rowIndex !== index),
+                          )
+                        }
+                        className="rounded-lg border border-red-200 bg-white px-3 py-2 text-sm font-semibold text-red-500"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setSpecRows((rows) => [...rows, { label: '', value: '' }])}
+                      className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-700"
+                    >
+                      + Add spec
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSpecRows([
+                          { label: 'Brand', value: '' },
+                          { label: 'Condition', value: '' },
+                          { label: 'Sensor', value: '' },
+                          { label: 'Lens Mount', value: '' },
+                        ])
+                      }
+                      className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-700"
+                    >
+                      Use camera template
+                    </button>
+                  </div>
+                </div>
+
                 <textarea
                   value={productForm.description}
                   onChange={(event) =>
@@ -434,7 +517,9 @@ export function AdminPage({
                   placeholder="Description"
                   rows={4}
                 />
+
                 {productError ? <p className="rounded-lg bg-red-50 p-2 text-sm text-red-600">{productError}</p> : null}
+
                 <label className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700">
                   <input
                     type="checkbox"
@@ -448,6 +533,7 @@ export function AdminPage({
                   />
                   Featured product
                 </label>
+
                 <button className="rounded-xl bg-ink px-4 py-2 font-bold text-white">Add Product</button>
               </form>
             </article>

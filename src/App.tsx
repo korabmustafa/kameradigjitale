@@ -256,7 +256,6 @@ export function App() {
         cartCount={cartCount}
         categoryNavigation={categoryNavigation}
         menuItems={menuItems}
-        showAdminLink={Boolean(adminToken)}
       />
       <div className="flex-1">
         <Routes>

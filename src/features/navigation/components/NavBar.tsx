@@ -12,7 +12,6 @@ type NavBarProps = {
   cartCount: number
   categoryNavigation: CategoryNavigationMap
   menuItems: MenuItem[]
-  showAdminLink?: boolean
 }
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
@@ -23,7 +22,7 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
 const subcategoryPath = (item: MenuItem, subcategory: NavSubcategory) =>
   `${item.path}?subcategory=${encodeURIComponent(normalizeSubcategory(subcategory.title) ?? '')}`
 
-export function NavBar({ cartCount, categoryNavigation, menuItems, showAdminLink = false }: NavBarProps) {
+export function NavBar({ cartCount, categoryNavigation, menuItems }: NavBarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [openCategory, setOpenCategory] = useState<string | null>(null)
   const location = useLocation()
@@ -131,14 +130,12 @@ export function NavBar({ cartCount, categoryNavigation, menuItems, showAdminLink
               Cart <span className="ml-1 rounded-full bg-accent px-2 py-0.5 text-ink">{cartCount}</span>
             </NavLink>
 
-            {showAdminLink ? (
-              <NavLink
-                to="/admin"
-                className="hidden rounded-full px-3 py-2 text-sm font-bold text-white/80 transition hover:bg-white/10 hover:text-mint sm:inline-flex"
-              >
-                Admin
-              </NavLink>
-            ) : null}
+            <NavLink
+              to="/admin"
+              className="hidden rounded-full px-3 py-2 text-sm font-bold text-white/80 transition hover:bg-white/10 hover:text-mint sm:inline-flex"
+            >
+              Admin
+            </NavLink>
 
             <button
               type="button"
@@ -233,19 +230,17 @@ export function NavBar({ cartCount, categoryNavigation, menuItems, showAdminLink
                   <span aria-hidden="true">→</span>
                 </NavLink>
 
-                {showAdminLink ? (
-                  <NavLink
-                    to="/admin"
-                    className={({ isActive }) =>
-                      `flex items-center justify-between rounded-2xl px-4 py-3 text-sm font-black transition sm:hidden ${
-                        isActive ? 'bg-mint text-ink' : 'bg-slate-50 hover:bg-amber-100'
-                      }`
-                    }
-                  >
-                    Admin
-                    <span aria-hidden="true">→</span>
-                  </NavLink>
-                ) : null}
+                <NavLink
+                  to="/admin"
+                  className={({ isActive }) =>
+                    `flex items-center justify-between rounded-2xl px-4 py-3 text-sm font-black transition sm:hidden ${
+                      isActive ? 'bg-mint text-ink' : 'bg-slate-50 hover:bg-amber-100'
+                    }`
+                  }
+                >
+                  Admin
+                  <span aria-hidden="true">→</span>
+                </NavLink>
               </nav>
             </div>
           </div>
