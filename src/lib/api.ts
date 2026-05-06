@@ -108,6 +108,7 @@ export const api = {
 
 
   createProduct: (payload: {
+    id?: string
     productCode: string
     name: string
     category: string
@@ -117,6 +118,7 @@ export const api = {
     description: string
     subcategory?: string
     featured?: boolean
+    gallery?: string[]
   }) => request<ApiProduct>('/products', { method: 'POST', body: JSON.stringify(payload) }).then(toProduct),
 
   deleteProduct: (id: string) => request<{ success: boolean }>(`/products/${id}`, { method: 'DELETE' }),

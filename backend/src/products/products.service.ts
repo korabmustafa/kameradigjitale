@@ -30,7 +30,7 @@ export class ProductsService {
     };
     const [total, items] = await this.prisma.$transaction([
       this.prisma.product.count({ where }),
-      this.prisma.product.findMany({ where, skip: (query.page - 1) * query.limit, take: query.limit, orderBy: { createdAt: 'desc' } })
+      this.prisma.product.findMany({ where, include: { gallery: true }, skip: (query.page - 1) * query.limit, take: query.limit, orderBy: { createdAt: 'desc' } })
     ]);
     return { items, meta: { total, page: query.page, limit: query.limit } };
   }
@@ -44,7 +44,23 @@ export class ProductsService {
   async create(payload: CreateProductDto) {
     const category = categoryMap[payload.category];
     if (!category) throw new BadRequestException('Invalid product category');
-    return this.prisma.product.create({ data: { ...payload, category } });
+
+    const { gallery, ...productData } = payload;
+
+    return this.prisma.product.create({
+      data: {
+        ...productData,
+        category,
+        gallery: gallery?.length
+          ? {
+              createMany: {
+                data: gallery.map((imageUrl) => ({ imageUrl }))
+              }
+            }
+          : undefined
+      },
+      include: { gallery: true }
+    });
   }
 
   async remove(id: string) {

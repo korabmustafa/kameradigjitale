@@ -110,6 +110,7 @@ export function App() {
 
   const handleCreateProduct = async (product: Product) => {
     const created = await api.createProduct({
+      id: product.id || undefined,
       productCode: product.productCode,
       name: product.name,
       category: product.category,
@@ -118,7 +119,8 @@ export function App() {
       image: product.image,
       description: product.description,
       subcategory: product.subcategory,
-      featured: product.featured
+      featured: product.featured,
+      gallery: product.gallery
     })
     setProducts((state) => [created, ...state.filter((item) => item.id !== created.id)])
   }
