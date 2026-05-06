@@ -20,3 +20,5 @@ dist
 # keep examples
 !.env.example
 !**/.env.example
+
+.idea/
