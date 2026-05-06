@@ -118,11 +118,17 @@ export class ProductsService {
       throw new BadRequestException('Invalid product category');
     }
 
-    const {
-      gallery,
-      category: _category,
-      ...productData
-    } = payload;
+    const { gallery } = payload;
+    const productData = {
+      productCode: payload.productCode,
+      name: payload.name,
+      price: payload.price,
+      stock: payload.stock,
+      image: payload.image,
+      description: payload.description,
+      subcategory: payload.subcategory,
+      featured: payload.featured
+    };
 
     return this.prisma.product.create({
       data: {
