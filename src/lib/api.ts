@@ -10,7 +10,7 @@ const categoryLabelMap: Record<string, Product['category']> = {
   LENSES: 'Lenses',
   FILM: 'Film',
   ACCESSORIES: 'Accessories',
-  SUPPLIES: 'Supplies'
+  SUPPLIES: 'Supplies',
 }
 const categoryEnumMap: Record<Product['category'], string> = {
   'Film Cameras': 'FILM_CAMERAS',
@@ -18,7 +18,7 @@ const categoryEnumMap: Record<Product['category'], string> = {
   Lenses: 'LENSES',
   Film: 'FILM',
   Accessories: 'ACCESSORIES',
-  Supplies: 'SUPPLIES'
+  Supplies: 'SUPPLIES',
 }
 
 type ApiProduct = {
@@ -33,18 +33,26 @@ type ApiProduct = {
   subcategory?: string
   featured?: boolean
   gallery?: Array<{ imageUrl: string }>
+  specs?: Array<{ label: string; value: string }>
 }
 
 const toProduct = (product: ApiProduct): Product => ({
   ...product,
   category: categoryLabelMap[product.category] ?? 'Accessories',
-  gallery: product.gallery?.map((entry) => entry.imageUrl)
+  price: Number(product.price),
+  gallery: product.gallery?.map((entry) => entry.imageUrl),
+  specs: product.specs?.map((spec) => ({
+    label: spec.label,
+    value: spec.value,
+  })),
 })
+
+const adminHeaders = (token: string) => ({ Authorization: `Bearer ${token}` })
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {
     headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
-    ...init
+    ...init,
   })
 
   if (!response.ok) {
@@ -61,10 +69,14 @@ const orderStatusMap: Record<string, OrderStatus> = {
   PACKED: 'Packed',
   SHIPPED: 'Out for delivery',
   DELIVERED: 'Delivered',
-  CANCELLED: 'Cancelled'
+  CANCELLED: 'Cancelled',
 }
 
-const roleMap: Record<string, AdminUser['role']> = { ADMIN: 'admin', EDITOR: 'editor', SUPPORT: 'support' }
+const roleMap: Record<string, AdminUser['role']> = {
+  ADMIN: 'admin',
+  EDITOR: 'editor',
+  SUPPORT: 'support',
+}
 
 type ApiOrderItem = {
   quantity: number
@@ -83,14 +95,16 @@ const toOrder = (order: ApiOrder): Order => ({
   ...order,
   total: Number(order.total),
   itemsSummary:
-    order.items
-      ?.map((item) => `${item.product?.name ?? 'Product'} × ${item.quantity}`)
-      .join(', ') ?? 'Order items unavailable',
+    order.items?.map((item) => `${item.product?.name ?? 'Product'} × ${item.quantity}`).join(', ') ??
+    'Order items unavailable',
   paymentMethod: 'Cash on Delivery',
-  status: orderStatusMap[order.status] ?? 'New'
+  status: orderStatusMap[order.status] ?? 'New',
 })
 
-const toAdminUser = (user: ApiAdminUser): AdminUser => ({ ...user, role: roleMap[user.role] ?? 'support' })
+const toAdminUser = (user: ApiAdminUser): AdminUser => ({
+  ...user,
+  role: roleMap[user.role] ?? 'support',
+})
 
 export const api = {
   async getProducts(params?: { category?: string; q?: string; page?: number; limit?: number }) {
@@ -100,74 +114,160 @@ export const api = {
     if (params?.page) query.set('page', String(params.page))
     if (params?.limit) query.set('limit', String(params.limit))
 
-    const payload = await request<{ items: ApiProduct[]; meta: { total: number; page: number; limit: number } }>(
-      `/products${query.toString() ? `?${query.toString()}` : ''}`
-    )
+    const payload = await request<{
+      items: ApiProduct[]
+      meta: { total: number; page: number; limit: number }
+    }>(`/products${query.toString() ? `?${query.toString()}` : ''}`)
     return { ...payload, items: payload.items.map(toProduct) }
   },
 
   async getNavigationMenu() {
     const menu = await request<Array<{ label: string; path: string; category?: string | null }>>('/navigation/menu')
-    return menu.map((item) => ({ ...item, category: item.category ? categoryLabelMap[item.category] : undefined })) as MenuItem[]
+    return menu.map((item) => ({
+      ...item,
+      category: item.category ? categoryLabelMap[item.category] : undefined,
+    })) as MenuItem[]
   },
   async getNavigationSubcategories() {
-    const items = await request<Array<{ id: string; slug: string; title: string; image: string; category: string }>>('/navigation/subcategories')
+    const items = await request<
+      Array<{
+        id: string
+        slug: string
+        title: string
+        image: string
+        category: string
+      }>
+    >('/navigation/subcategories')
     return items.reduce<CategoryNavigationMap>((acc, item) => {
       const category = categoryLabelMap[item.category]
       if (!category) return acc
-      const nextItem: NavSubcategory = { id: item.id, slug: item.slug, title: item.title, image: item.image }
+      const nextItem: NavSubcategory = {
+        id: item.id,
+        slug: item.slug,
+        title: item.title,
+        image: item.image,
+      }
       acc[category] = [...(acc[category] ?? []), nextItem]
       return acc
     }, {})
   },
 
-  async getOrders() {
-    const orders = await request<ApiOrder[]>('/orders')
+  adminLogin: (password: string) =>
+    request<{ token: string }>('/auth/admin-login', {
+      method: 'POST',
+      body: JSON.stringify({ password }),
+    }),
+
+  getProductByCode: (productCode: string) =>
+    request<ApiProduct>(`/products/${encodeURIComponent(productCode)}`).then(toProduct),
+
+  async getOrders(token: string) {
+    const orders = await request<ApiOrder[]>('/orders', {
+      headers: adminHeaders(token),
+    })
     return orders.map(toOrder)
   },
 
   lookupOrder: (payload: { orderNumber: string; email: string }) =>
-    request<ApiOrder>('/orders/lookup', { method: 'POST', body: JSON.stringify(payload) }).then(toOrder),
+    request<ApiOrder>('/orders/lookup', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }).then(toOrder),
 
-  async getAdminUsers() {
-    const users = await request<ApiAdminUser[]>('/users/admin')
+  async getAdminUsers(token: string) {
+    const users = await request<ApiAdminUser[]>('/users/admin', {
+      headers: adminHeaders(token),
+    })
     return users.map(toAdminUser)
   },
 
+  createProduct: (
+    payload: {
+      id?: string
+      productCode: string
+      name: string
+      category: string
+      price: number
+      stock: number
+      image: string
+      description: string
+      subcategory?: string
+      featured?: boolean
+      gallery?: string[]
+      specs?: Array<{ label: string; value: string }>
+    },
+    token: string,
+  ) =>
+    request<ApiProduct>('/products', {
+      method: 'POST',
+      headers: adminHeaders(token),
+      body: JSON.stringify(payload),
+    }).then(toProduct),
 
+  deleteProduct: (id: string, token: string) =>
+    request<{ success: boolean }>(`/products/${id}`, {
+      method: 'DELETE',
+      headers: adminHeaders(token),
+    }),
 
-  createProduct: (payload: {
-    id?: string
-    productCode: string
-    name: string
-    category: string
-    price: number
-    stock: number
-    image: string
-    description: string
-    subcategory?: string
-    featured?: boolean
-    gallery?: string[]
-  }) => request<ApiProduct>('/products', { method: 'POST', body: JSON.stringify(payload) }).then(toProduct),
+  createAdminUser: (
+    payload: {
+      name: string
+      email: string
+      role: 'ADMIN' | 'EDITOR' | 'SUPPORT'
+    },
+    token: string,
+  ) =>
+    request<ApiAdminUser>('/users/admin', {
+      method: 'POST',
+      headers: adminHeaders(token),
+      body: JSON.stringify(payload),
+    }).then(toAdminUser),
 
-  deleteProduct: (id: string) => request<{ success: boolean }>(`/products/${id}`, { method: 'DELETE' }),
+  toggleAdminUser: (id: string, token: string) =>
+    request<ApiAdminUser>(`/users/admin/${id}/toggle-active`, {
+      method: 'PATCH',
+      headers: adminHeaders(token),
+    }).then(toAdminUser),
 
-  createAdminUser: (payload: { name: string; email: string; role: 'ADMIN' | 'EDITOR' | 'SUPPORT' }) =>
-    request<ApiAdminUser>('/users/admin', { method: 'POST', body: JSON.stringify(payload) }).then(toAdminUser),
-
-  toggleAdminUser: (id: string) =>
-    request<ApiAdminUser>(`/users/admin/${id}/toggle-active`, { method: 'PATCH' }).then(toAdminUser),
-
-  deleteAdminUser: (id: string) => request(`/users/admin/${id}`, { method: 'DELETE' }),
-  createNavigationSubcategory: (payload: { category: Product['category']; title: string; image: string; slug: string }) =>
+  deleteAdminUser: (id: string, token: string) =>
+    request(`/users/admin/${id}`, {
+      method: 'DELETE',
+      headers: adminHeaders(token),
+    }),
+  createNavigationSubcategory: (
+    payload: {
+      category: Product['category']
+      title: string
+      image: string
+      slug: string
+    },
+    token: string,
+  ) =>
     request<{ id: string; title: string; image: string }>(`/navigation/subcategories`, {
       method: 'POST',
-      body: JSON.stringify({ ...payload, category: categoryEnumMap[payload.category] })
+      headers: adminHeaders(token),
+      body: JSON.stringify({
+        ...payload,
+        category: categoryEnumMap[payload.category],
+      }),
     }),
-  deleteNavigationSubcategory: (id: string) => request(`/navigation/subcategories/${id}`, { method: 'DELETE' }),
+  deleteNavigationSubcategory: (id: string, token: string) =>
+    request(`/navigation/subcategories/${id}`, {
+      method: 'DELETE',
+      headers: adminHeaders(token),
+    }),
 
-  updateOrderStatus: (id: string, status: 'NEW' | 'PAID' | 'PACKED' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED') =>
-    request<ApiOrder>(`/orders/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }).then(toOrder),
+  updateOrderStatus: (
+    id: string,
+    status: 'NEW' | 'PAID' | 'PACKED' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED',
+    token: string,
+  ) =>
+    request<ApiOrder>(`/orders/${id}/status`, {
+      method: 'PATCH',
+      headers: adminHeaders(token),
+      body: JSON.stringify({ status }),
+    }).then(toOrder),
 
   createOrder: (payload: {
     customerName: string
@@ -175,5 +275,9 @@ export const api = {
     phone: string
     address: string
     items: Array<{ productCode: string; quantity: number }>
-  }) => request<ApiOrder>('/orders', { method: 'POST', body: JSON.stringify(payload) }).then(toOrder)
+  }) =>
+    request<ApiOrder>('/orders', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }).then(toOrder),
 }

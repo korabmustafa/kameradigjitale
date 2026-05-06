@@ -4,7 +4,7 @@ import {
   normalizeSubcategory,
   type CategoryNavigationMap,
   type MenuItem,
-  type NavSubcategory
+  type NavSubcategory,
 } from '../../../data/navigation'
 import logo2 from '../../../assets/kamera_digjitale_logo_transparent.png'
 
@@ -12,6 +12,7 @@ type NavBarProps = {
   cartCount: number
   categoryNavigation: CategoryNavigationMap
   menuItems: MenuItem[]
+  showAdminLink?: boolean
 }
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
@@ -22,7 +23,7 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
 const subcategoryPath = (item: MenuItem, subcategory: NavSubcategory) =>
   `${item.path}?subcategory=${encodeURIComponent(normalizeSubcategory(subcategory.title) ?? '')}`
 
-export function NavBar({ cartCount, categoryNavigation, menuItems }: NavBarProps) {
+export function NavBar({ cartCount, categoryNavigation, menuItems, showAdminLink = false }: NavBarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [openCategory, setOpenCategory] = useState<string | null>(null)
   const location = useLocation()
@@ -44,11 +45,7 @@ export function NavBar({ cartCount, categoryNavigation, menuItems }: NavBarProps
             className="inline-flex shrink-0 items-center transition hover:-translate-y-0.5"
             aria-label="Kamera Digjitale home"
           >
-            <img
-              src={logo2}
-              alt="Kamera Digjitale"
-              className="h-8 w-auto object-contain"
-            />
+            <img src={logo2} alt="Kamera Digjitale" className="h-8 w-auto object-contain" />
           </Link>
 
           <nav
@@ -62,7 +59,7 @@ export function NavBar({ cartCount, categoryNavigation, menuItems }: NavBarProps
             ))}
 
             {categoryItems.map((item) => {
-              const subcategories = item.category ? categoryNavigation[item.category] ?? [] : []
+              const subcategories = item.category ? (categoryNavigation[item.category] ?? []) : []
 
               return (
                 <div key={item.label} className="group">
@@ -100,9 +97,7 @@ export function NavBar({ cartCount, categoryNavigation, menuItems }: NavBarProps
                                     className="h-32 w-full object-cover transition duration-300 group-hover/card:scale-105"
                                   />
                                 </div>
-                                <p className="mt-2 font-black text-slate-900">
-                                  {subcategory.title}
-                                </p>
+                                <p className="mt-2 font-black text-slate-900">{subcategory.title}</p>
                               </Link>
                             ))}
                           </div>
@@ -136,12 +131,14 @@ export function NavBar({ cartCount, categoryNavigation, menuItems }: NavBarProps
               Cart <span className="ml-1 rounded-full bg-accent px-2 py-0.5 text-ink">{cartCount}</span>
             </NavLink>
 
-            <NavLink
-              to="/admin"
-              className="hidden rounded-full px-3 py-2 text-sm font-bold text-white/80 transition hover:bg-white/10 hover:text-mint sm:inline-flex"
-            >
-              Admin
-            </NavLink>
+            {showAdminLink ? (
+              <NavLink
+                to="/admin"
+                className="hidden rounded-full px-3 py-2 text-sm font-bold text-white/80 transition hover:bg-white/10 hover:text-mint sm:inline-flex"
+              >
+                Admin
+              </NavLink>
+            ) : null}
 
             <button
               type="button"
@@ -161,7 +158,7 @@ export function NavBar({ cartCount, categoryNavigation, menuItems }: NavBarProps
             <div className="mt-4 max-h-[calc(100vh-6rem)] overflow-y-auto rounded-[1.75rem] border border-white/10 bg-white p-3 text-ink shadow-2xl">
               <nav className="space-y-2" aria-label="Mobile navigation">
                 {menuItems.map((item) => {
-                  const subcategories = item.category ? categoryNavigation[item.category] ?? [] : []
+                  const subcategories = item.category ? (categoryNavigation[item.category] ?? []) : []
                   const expanded = openCategory === item.label
 
                   if (subcategories.length === 0) {
@@ -236,17 +233,19 @@ export function NavBar({ cartCount, categoryNavigation, menuItems }: NavBarProps
                   <span aria-hidden="true">→</span>
                 </NavLink>
 
-                <NavLink
-                  to="/admin"
-                  className={({ isActive }) =>
-                    `flex items-center justify-between rounded-2xl px-4 py-3 text-sm font-black transition sm:hidden ${
-                      isActive ? 'bg-mint text-ink' : 'bg-slate-50 hover:bg-amber-100'
-                    }`
-                  }
-                >
-                  Admin
-                  <span aria-hidden="true">→</span>
-                </NavLink>
+                {showAdminLink ? (
+                  <NavLink
+                    to="/admin"
+                    className={({ isActive }) =>
+                      `flex items-center justify-between rounded-2xl px-4 py-3 text-sm font-black transition sm:hidden ${
+                        isActive ? 'bg-mint text-ink' : 'bg-slate-50 hover:bg-amber-100'
+                      }`
+                    }
+                  >
+                    Admin
+                    <span aria-hidden="true">→</span>
+                  </NavLink>
+                ) : null}
               </nav>
             </div>
           </div>

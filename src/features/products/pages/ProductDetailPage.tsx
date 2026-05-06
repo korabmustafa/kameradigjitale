@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import type { Product } from '../../../data/products'
+import { api } from '../../../lib/api'
 
 type ProductDetailPageProps = {
   products: Product[]
@@ -9,13 +10,53 @@ type ProductDetailPageProps = {
 
 export function ProductDetailPage({ products, onAddToCart }: ProductDetailPageProps) {
   const { productCode } = useParams<{ productCode: string }>()
-  const product = useMemo(() => products.find((item) => item.productCode === productCode), [products, productCode])
+  const fallbackProduct = useMemo(
+    () => products.find((item) => item.productCode === productCode),
+    [products, productCode],
+  )
+  const [product, setProduct] = useState<Product | undefined>(fallbackProduct)
   const [activeImage, setActiveImage] = useState(0)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (!productCode) return
+
+    let ignore = false
+    setIsLoading(true)
+    setError('')
+
+    api
+      .getProductByCode(productCode)
+      .then((response) => {
+        if (!ignore) {
+          setProduct(response)
+          setActiveImage(0)
+        }
+      })
+      .catch((requestError) => {
+        if (!ignore) {
+          setProduct(fallbackProduct)
+          setError(requestError instanceof Error ? requestError.message : 'Unable to load product')
+        }
+      })
+      .finally(() => {
+        if (!ignore) {
+          setIsLoading(false)
+        }
+      })
+
+    return () => {
+      ignore = true
+    }
+  }, [fallbackProduct, productCode])
 
   if (!product) {
     return (
       <main className="mx-auto max-w-7xl px-6 py-8">
-        <p className="rounded-xl bg-white p-5 shadow-playful">Product not found. Please return to the catalog.</p>
+        <p className="rounded-xl bg-white p-5 shadow-playful">
+          {isLoading ? 'Loading product...' : 'Product not found. Please return to the catalog.'}
+        </p>
       </main>
     )
   }
@@ -24,10 +65,20 @@ export function ProductDetailPage({ products, onAddToCart }: ProductDetailPagePr
 
   return (
     <main className="mx-auto max-w-7xl space-y-8 px-6 py-8">
+      {error && product ? (
+        <p className="rounded-xl bg-amber-50 px-4 py-2 text-sm text-amber-700">
+          Showing cached product while backend detail loads: {error}
+        </p>
+      ) : null}
       <div className="text-sm text-slate-500">
-        <Link to="/" className="hover:text-ink">Home</Link> /{' '}
-        <Link to="/catalog" className="hover:text-ink">Categories</Link> /{' '}
-        <span>{product.category}</span> / <span className="text-slate-700">{product.name}</span>
+        <Link to="/" className="hover:text-ink">
+          Home
+        </Link>{' '}
+        /{' '}
+        <Link to="/catalog" className="hover:text-ink">
+          Categories
+        </Link>{' '}
+        / <span>{product.category}</span> / <span className="text-slate-700">{product.name}</span>
       </div>
 
       <section className="grid gap-6 xl:grid-cols-[1.8fr_1fr]">
@@ -54,7 +105,10 @@ export function ProductDetailPage({ products, onAddToCart }: ProductDetailPagePr
           <p className="text-sm text-slate-500">Product code: {product.productCode}</p>
           <p className="text-4xl font-black text-ink">${product.price}</p>
           <p className="text-sm text-slate-600">{product.description}</p>
-          <button onClick={() => onAddToCart(product.id)} className="w-full rounded-xl bg-ink px-4 py-3 font-bold text-white">
+          <button
+            onClick={() => onAddToCart(product.id)}
+            className="w-full rounded-xl bg-ink px-4 py-3 font-bold text-white"
+          >
             Add to cart
           </button>
           <div className="rounded-xl bg-emerald-50 p-4 text-sm text-slate-700">
@@ -82,7 +136,10 @@ export function ProductDetailPage({ products, onAddToCart }: ProductDetailPagePr
               : [
                   { label: 'Brand', value: 'TBD' },
                   { label: 'Type', value: product.category },
-                  { label: 'Details', value: 'Specifications will be added from admin panel.' }
+                  {
+                    label: 'Details',
+                    value: 'Specifications will be added from admin panel.',
+                  },
                 ]
             ).map((spec) => (
               <div key={spec.label} className="grid grid-cols-2 gap-4 px-4 py-2 text-sm">

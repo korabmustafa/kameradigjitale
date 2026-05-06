@@ -11,5 +11,6 @@ export type Product = {
   gallery?: string[];
   description: string;
   subcategory?: string;
+  specs?: Array<{ label: string; value: string }>;
   featured?: boolean;
 };
