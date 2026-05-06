@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
-import {normalizeSubcategory, type CategoryNavigationMap, type MenuItem, type NavSubcategory } from '../../../data/navigation'
+import {
+  normalizeSubcategory,
+  type CategoryNavigationMap,
+  type MenuItem,
+  type NavSubcategory
+} from '../../../data/navigation'
+import logo2 from '../../../assets/kamera_digjitale_logo_transparent.png'
 
 type NavBarProps = {
   cartCount: number
@@ -35,9 +41,14 @@ export function NavBar({ cartCount, categoryNavigation, menuItems }: NavBarProps
         <div className="flex items-center justify-between gap-3">
           <Link
             to="/"
-            className="inline-flex shrink-0 items-center rounded-full bg-accent px-4 py-2 text-sm font-black text-ink shadow-[0_8px_0_rgba(0,0,0,0.16)] transition hover:-translate-y-0.5"
+            className="inline-flex shrink-0 items-center transition hover:-translate-y-0.5"
+            aria-label="Kamera Digjitale home"
           >
-            Kamera Digjitale
+            <img
+              src={logo2}
+              alt="Kamera Digjitale"
+              className="h-8 w-auto object-contain"
+            />
           </Link>
 
           <nav
@@ -89,7 +100,9 @@ export function NavBar({ cartCount, categoryNavigation, menuItems }: NavBarProps
                                     className="h-32 w-full object-cover transition duration-300 group-hover/card:scale-105"
                                   />
                                 </div>
-                                <p className="mt-2 font-black text-slate-900">{subcategory.title}</p>
+                                <p className="mt-2 font-black text-slate-900">
+                                  {subcategory.title}
+                                </p>
                               </Link>
                             ))}
                           </div>
