@@ -10,6 +10,7 @@ import { NavBar } from './features/navigation/components/NavBar'
 import { ProductDetailPage } from './features/products/pages/ProductDetailPage'
 import { AdminPage } from './pages/AdminPage'
 import { CheckoutPage } from './pages/CheckoutPage'
+import { OrderLookupPage } from './pages/OrderLookupPage'
 import { CollectionPage } from './pages/CollectionPage'
 import { HomePage } from './pages/HomePage'
 import { InfoPage } from './pages/InfoPage'
@@ -146,8 +147,15 @@ export function App() {
   }
 
   const handleUpdateOrderStatus = async (id: string, status: OrderStatus) => {
-    const backendStatus = status === 'New' ? 'NEW' : status === 'Packed' ? 'PACKED' : status === 'Out for delivery' ? 'SHIPPED' : 'DELIVERED'
-    const updated = await api.updateOrderStatus(id, backendStatus)
+    const statusMap: Record<OrderStatus, 'NEW' | 'PAID' | 'PACKED' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED'> = {
+      New: 'NEW',
+      Paid: 'PAID',
+      Packed: 'PACKED',
+      'Out for delivery': 'SHIPPED',
+      Delivered: 'DELIVERED',
+      Cancelled: 'CANCELLED'
+    }
+    const updated = await api.updateOrderStatus(id, statusMap[status])
     setOrders((state) => state.map((order) => (order.id === id ? updated : order)))
   }
 
@@ -215,6 +223,7 @@ export function App() {
             ))}
           <Route path="/products/:productCode" element={<ProductDetailPage products={products} onAddToCart={handleAddToCart} />} />
           <Route path="/checkout" element={<CheckoutPage cart={cart} products={products} onOrderCreated={(order) => setOrders((state) => [order, ...state])} />} />
+          <Route path="/order-lookup" element={<OrderLookupPage />} />
           <Route
             path="/admin"
             element={

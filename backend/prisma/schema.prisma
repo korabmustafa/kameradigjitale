@@ -66,6 +66,7 @@ model AdminUser {
 
 model Order {
   id           String      @id @default(uuid()) @db.Uuid
+  orderNumber  String      @unique
   customerName String
   email        String
   phone        String

@@ -110,6 +110,13 @@ export function NavBar({ cartCount, categoryNavigation, menuItems }: NavBarProps
 
           <div className="flex shrink-0 items-center gap-2">
             <NavLink
+              to="/order-lookup"
+              className="hidden rounded-full px-3 py-2 text-sm font-bold text-white/80 transition hover:bg-white/10 hover:text-mint sm:inline-flex"
+            >
+              Order Status
+            </NavLink>
+
+            <NavLink
               to="/checkout"
               className="rounded-full border border-white/15 px-3 py-2 text-sm font-black text-white/90 transition hover:border-mint hover:text-mint"
             >
@@ -203,6 +210,18 @@ export function NavBar({ cartCount, categoryNavigation, menuItems }: NavBarProps
                     </div>
                   )
                 })}
+
+                <NavLink
+                  to="/order-lookup"
+                  className={({ isActive }) =>
+                    `flex items-center justify-between rounded-2xl px-4 py-3 text-sm font-black transition sm:hidden ${
+                      isActive ? 'bg-mint text-ink' : 'bg-slate-50 hover:bg-amber-100'
+                    }`
+                  }
+                >
+                  Order Status
+                  <span aria-hidden="true">→</span>
+                </NavLink>
 
                 <NavLink
                   to="/admin"
