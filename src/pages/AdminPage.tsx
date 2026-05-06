@@ -67,6 +67,8 @@ export function AdminPage({
   const [galleryInput, setGalleryInput] = useState('')
   const [specsInput, setSpecsInput] = useState('')
   const [productError, setProductError] = useState('')
+
+  const availableSubcategories = useMemo(() => (categoryNavigation[productForm.category] ?? []).map((entry) => entry.title), [categoryNavigation, productForm.category])
   const [navigationForm, setNavigationForm] = useState({
     category: 'Digital Cameras' as ProductCategory,
     title: '',
@@ -136,7 +138,6 @@ export function AdminPage({
 
     onCreateProduct({
       ...productForm,
-      id: productForm.id || `tmp-${productForm.productCode}`,
       subcategory: productForm.subcategory?.trim() || undefined,
       gallery,
       specs
@@ -268,12 +269,22 @@ export function AdminPage({
                     <option key={category}>{category}</option>
                   ))}
                 </select>
-                <input
-                  value={productForm.subcategory ?? ''}
-                  onChange={(event) => setProductForm((state) => ({ ...state, subcategory: event.target.value }))}
-                  className="rounded-lg border border-slate-200 px-3 py-2"
-                  placeholder="Subcategory (e.g. Mirrorless, Prime Lenses)"
-                />
+                <label className="grid gap-1 text-sm font-semibold text-slate-700">
+                  <span>Subcategory</span>
+                  <select
+                    value={productForm.subcategory ?? ''}
+                    onChange={(event) => setProductForm((state) => ({ ...state, subcategory: event.target.value || '' }))}
+                    className="rounded-lg border border-slate-200 px-3 py-2 text-slate-900"
+                    disabled={availableSubcategories.length === 0}
+                  >
+                    <option value="">{availableSubcategories.length === 0 ? 'No subcategories available for this category' : 'Select subcategory'}</option>
+                    {availableSubcategories.map((subcategory) => (
+                      <option key={subcategory} value={subcategory}>
+                        {subcategory}
+                      </option>
+                    ))}
+                  </select>
+                </label>
                 <input
                   type="number"
                   value={productForm.price}
@@ -318,6 +329,14 @@ export function AdminPage({
                   rows={4}
                 />
                 {productError ? <p className="rounded-lg bg-red-50 p-2 text-sm text-red-600">{productError}</p> : null}
+                <label className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(productForm.featured)}
+                    onChange={(event) => setProductForm((state) => ({ ...state, featured: event.target.checked }))}
+                  />
+                  Featured product
+                </label>
                 <button className="rounded-xl bg-ink px-4 py-2 font-bold text-white">Add Product</button>
               </form>
             </article>
