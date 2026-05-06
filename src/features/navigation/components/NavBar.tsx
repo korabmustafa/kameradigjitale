@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
-import type { CategoryNavigationMap, MenuItem, NavSubcategory } from '../../../data/navigation'
+import {normalizeSubcategory, type CategoryNavigationMap, type MenuItem, type NavSubcategory } from '../../../data/navigation'
 
 type NavBarProps = {
   cartCount: number
@@ -9,10 +9,12 @@ type NavBarProps = {
 }
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-  `rounded-full px-3 py-2 transition hover:bg-white/10 hover:text-mint ${isActive ? 'bg-white/10 text-mint' : 'text-white/90'}`
+  `rounded-full px-3 py-2 transition hover:bg-white/10 hover:text-mint ${
+    isActive ? 'bg-white/10 text-mint' : 'text-white/90'
+  }`
 
 const subcategoryPath = (item: MenuItem, subcategory: NavSubcategory) =>
-  `${item.path}?subcategory=${encodeURIComponent(subcategory.slug ?? subcategory.title)}`
+  `${item.path}?subcategory=${encodeURIComponent(normalizeSubcategory(subcategory.title) ?? '')}`
 
 export function NavBar({ cartCount, categoryNavigation, menuItems }: NavBarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -38,7 +40,10 @@ export function NavBar({ cartCount, categoryNavigation, menuItems }: NavBarProps
             Kamera Digjitale
           </Link>
 
-          <nav className="hidden flex-1 items-center justify-center gap-1 text-sm font-bold xl:flex" aria-label="Primary navigation">
+          <nav
+            className="hidden flex-1 items-center justify-center gap-1 text-sm font-bold xl:flex"
+            aria-label="Primary navigation"
+          >
             {utilityItems.slice(0, 1).map((item) => (
               <NavLink key={item.label} to={item.path} className={navLinkClass}>
                 {item.label}
@@ -59,13 +64,24 @@ export function NavBar({ cartCount, categoryNavigation, menuItems }: NavBarProps
                       <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white text-slate-900 shadow-2xl">
                         <div className="grid gap-0 xl:grid-cols-[0.8fr_2.2fr]">
                           <div className="bg-gradient-to-br from-mint via-white to-amber-100 p-6">
-                            <p className="rounded-full bg-ink px-3 py-1 text-xs font-black uppercase tracking-wide text-white">Explore {item.label}</p>
-                            <h2 className="mt-4 text-2xl font-black leading-tight text-ink">Shop by style, format, and workflow.</h2>
-                            <p className="mt-3 text-sm font-semibold text-slate-700">Fresh subcategories are synced from the backend navigation API.</p>
+                            <p className="rounded-full bg-ink px-3 py-1 text-xs font-black uppercase tracking-wide text-white">
+                              Explore {item.label}
+                            </p>
+                            <h2 className="mt-4 text-2xl font-black leading-tight text-ink">
+                              Shop by style, format, and workflow.
+                            </h2>
+                            <p className="mt-3 text-sm font-semibold text-slate-700">
+                              Fresh subcategories are synced from the backend navigation API.
+                            </p>
                           </div>
+
                           <div className="grid gap-4 p-5 md:grid-cols-2 xl:grid-cols-3">
                             {subcategories.map((subcategory) => (
-                              <Link key={subcategory.id} to={subcategoryPath(item, subcategory)} className="group/card rounded-2xl p-2 transition hover:bg-slate-100">
+                              <Link
+                                key={subcategory.id}
+                                to={subcategoryPath(item, subcategory)}
+                                className="group/card rounded-2xl p-2 transition hover:bg-slate-100"
+                              >
                                 <div className="overflow-hidden rounded-xl bg-slate-100">
                                   <img
                                     src={subcategory.image}
@@ -99,9 +115,14 @@ export function NavBar({ cartCount, categoryNavigation, menuItems }: NavBarProps
             >
               Cart <span className="ml-1 rounded-full bg-accent px-2 py-0.5 text-ink">{cartCount}</span>
             </NavLink>
-            <NavLink to="/admin" className="hidden rounded-full px-3 py-2 text-sm font-bold text-white/80 transition hover:bg-white/10 hover:text-mint sm:inline-flex">
+
+            <NavLink
+              to="/admin"
+              className="hidden rounded-full px-3 py-2 text-sm font-bold text-white/80 transition hover:bg-white/10 hover:text-mint sm:inline-flex"
+            >
               Admin
             </NavLink>
+
             <button
               type="button"
               className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/15 text-xl font-black transition hover:border-mint hover:text-mint xl:hidden"
@@ -129,7 +150,9 @@ export function NavBar({ cartCount, categoryNavigation, menuItems }: NavBarProps
                         key={item.label}
                         to={item.path}
                         className={({ isActive }) =>
-                          `flex items-center justify-between rounded-2xl px-4 py-3 text-sm font-black transition ${isActive ? 'bg-mint text-ink' : 'bg-slate-50 hover:bg-amber-100'}`
+                          `flex items-center justify-between rounded-2xl px-4 py-3 text-sm font-black transition ${
+                            isActive ? 'bg-mint text-ink' : 'bg-slate-50 hover:bg-amber-100'
+                          }`
                         }
                       >
                         {item.label}
@@ -144,11 +167,14 @@ export function NavBar({ cartCount, categoryNavigation, menuItems }: NavBarProps
                         <NavLink
                           to={item.path}
                           className={({ isActive }) =>
-                            `flex-1 rounded-xl px-3 py-2 text-sm font-black transition ${isActive ? 'bg-mint text-ink' : 'hover:bg-white'}`
+                            `flex-1 rounded-xl px-3 py-2 text-sm font-black transition ${
+                              isActive ? 'bg-mint text-ink' : 'hover:bg-white'
+                            }`
                           }
                         >
                           {item.label}
                         </NavLink>
+
                         <button
                           type="button"
                           className="h-10 w-10 rounded-xl bg-white text-lg font-black shadow-sm transition hover:bg-amber-100"
@@ -163,7 +189,11 @@ export function NavBar({ cartCount, categoryNavigation, menuItems }: NavBarProps
                       {expanded ? (
                         <div className="mt-2 grid gap-2 sm:grid-cols-2">
                           {subcategories.map((subcategory) => (
-                            <Link key={subcategory.id} to={subcategoryPath(item, subcategory)} className="flex items-center gap-3 rounded-xl bg-white p-2 shadow-sm transition hover:bg-amber-50">
+                            <Link
+                              key={subcategory.id}
+                              to={subcategoryPath(item, subcategory)}
+                              className="flex items-center gap-3 rounded-xl bg-white p-2 shadow-sm transition hover:bg-amber-50"
+                            >
                               <img src={subcategory.image} alt="" className="h-14 w-16 rounded-lg object-cover" />
                               <span className="text-sm font-black text-slate-900">{subcategory.title}</span>
                             </Link>
@@ -173,10 +203,13 @@ export function NavBar({ cartCount, categoryNavigation, menuItems }: NavBarProps
                     </div>
                   )
                 })}
+
                 <NavLink
                   to="/admin"
                   className={({ isActive }) =>
-                    `flex items-center justify-between rounded-2xl px-4 py-3 text-sm font-black transition sm:hidden ${isActive ? 'bg-mint text-ink' : 'bg-slate-50 hover:bg-amber-100'}`
+                    `flex items-center justify-between rounded-2xl px-4 py-3 text-sm font-black transition sm:hidden ${
+                      isActive ? 'bg-mint text-ink' : 'bg-slate-50 hover:bg-amber-100'
+                    }`
                   }
                 >
                   Admin

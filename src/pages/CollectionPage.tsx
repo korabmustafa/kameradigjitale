@@ -2,15 +2,7 @@ import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { ProductCard } from '../features/products/components/ProductCard'
 import type { Product } from '../data/products'
-
-
-const normalizeSubcategory = (value?: string | null) =>
-  value
-    ?.trim()
-    .toLowerCase()
-    .replace(/&/g, ' and ')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)/g, '')
+import { normalizeSubcategory } from '../data/navigation'
 
 type CollectionPageProps = {
   title: string
@@ -22,15 +14,18 @@ type CollectionPageProps = {
 export function CollectionPage({ title, subtitle, products, onAddToCart }: CollectionPageProps) {
   const [query, setQuery] = useState('')
   const [searchParams] = useSearchParams()
+
   const selectedSubcategory = normalizeSubcategory(searchParams.get('subcategory'))
 
   const filteredProducts = useMemo(
     () =>
       products.filter((product) => {
         const target = `${product.name} ${product.description}`.toLowerCase()
-        const matchesQuery = target.includes(query.toLowerCase())
+        const matchesQuery = target.includes(query.trim().toLowerCase())
+
         const productSubcategory = normalizeSubcategory(product.subcategory)
         const matchesSubcategory = !selectedSubcategory || productSubcategory === selectedSubcategory
+
         return matchesQuery && matchesSubcategory
       }),
     [products, query, selectedSubcategory]
@@ -45,6 +40,7 @@ export function CollectionPage({ title, subtitle, products, onAddToCart }: Colle
         <label htmlFor="camera-search" className="mb-2 block text-sm font-semibold text-slate-700">
           Search cameras
         </label>
+
         <input
           id="camera-search"
           value={query}
@@ -58,7 +54,9 @@ export function CollectionPage({ title, subtitle, products, onAddToCart }: Colle
         {filteredProducts.length === 0 ? (
           <p className="rounded-xl bg-white p-5 text-slate-700 shadow-playful">No products match your search yet.</p>
         ) : (
-          filteredProducts.map((product) => <ProductCard key={product.id} product={product} onAddToCart={onAddToCart} />)
+          filteredProducts.map((product) => (
+            <ProductCard key={product.id} product={product} onAddToCart={onAddToCart} />
+          ))
         )}
       </div>
     </main>
