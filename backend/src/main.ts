@@ -35,4 +35,7 @@ async function bootstrap() {
 );
 }
 
-bootstrap();
+bootstrap().catch((error) => {
+  console.error('Fatal NestJS startup error:', error);
+  process.exit(1);
+});
